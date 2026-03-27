@@ -26,16 +26,31 @@ The final `.gobk` zip file is created during the npm build process.
 
 ## Usage
 
+### Interactive Mode (Recommended)
+
+```bash
+npm run convert
+```
+
+This will:
+- Scan the `ebooks/` folder for `.epub` files
+- Prompt you to select which EPUB to convert
+- Automatically extract the EPUB
+- Convert it to gobook format and stage in `gobooks/`
+- Clean up temporary files
+
+### Manual Mode
+
 ```bash
 python3 scripts/epub_to_gobook_converter.py <epub_extracted_dir> <book_name>
 ```
 
-### Arguments
+### Arguments (Manual Mode)
 
 - `<epub_extracted_dir>`: Path to an extracted EPUB directory (must contain `OPS/` subdirectory with XHTML and SVG files)
-- `<book_name>`: Name for the book (used for staging folder and final `.gobk` file)
+- `<book_name>`: Name for the book (used for staging folder)
 
-### Example
+### Example (Manual)
 
 ```bash
 python3 scripts/epub_to_gobook_converter.py ebooks/temp_epub_sg0027 sg0027_ki_k46_sample
@@ -254,6 +269,14 @@ The converter maintains:
 - `viewport_string()`: Compute viewport range from coordinates
 
 ## Command-Line Usage
+
+### Interactive Conversion
+
+```bash
+npm run convert
+```
+
+### Manual Conversion
 
 ```bash
 # Basic conversion (stages files)

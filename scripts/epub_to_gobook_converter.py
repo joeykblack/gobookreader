@@ -525,25 +525,67 @@ class EPUBToGobookConverter:
         
         # Note: Zipping will be done during npm build
 
+def scan_and_prompt_epubs():
+    """Scan ebooks/ folder for .epub files and prompt user to select one"""
+    ebooks_dir = Path("ebooks")
+    if not ebooks_dir.exists():
+        print("Error: ebooks/ directory not found")
+        sys.exit(1)
+    
+    epub_files = list(ebooks_dir.glob("*.epub"))
+    if not epub_files:
+        print("No .epub files found in ebooks/")
+        sys.exit(1)
+    
+    print("Available EPUB files:")
+    for i, epub in enumerate(epub_files, 1):
+        print(f"{i}. {epub.name}")
+    
+    while True:
+        try:
+            choice = int(input("Select an EPUB to convert (number): "))
+            if 1 <= choice <= len(epub_files):
+                return epub_files[choice - 1]
+            else:
+                print("Invalid choice. Try again.")
+        except ValueError:
+            print("Please enter a number.")
+
+def extract_epub(epub_path, extract_dir):
+    """Extract EPUB (zip) to directory"""
+    with zipfile.ZipFile(epub_path, 'r') as zip_ref:
+        zip_ref.extractall(extract_dir)
+    print(f"Extracted {epub_path} to {extract_dir}")
+
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python epub_to_gobook_converter.py <epub_extracted_dir> [output_file.gobk]")
-        print("Example: python epub_to_gobook_converter.py temp_epub_sg0027 sg0027_ki_k46.gobk")
-        sys.exit(1)
-    
-    epub_dir = sys.argv[1]
-    output_file = sys.argv[2] if len(sys.argv) > 2 else "output.gobk"
-    
-    # Ensure output has .gobk extension
-    if not output_file.endswith('.gobk'):
-        output_file += '.gobk'
-    
-    if not Path(epub_dir).exists():
-        print(f"Error: Directory {epub_dir} does not exist")
-        sys.exit(1)
-    
-    converter = EPUBToGobookConverter(epub_dir)
-    converter.save(output_file)
+        # Interactive mode
+        epub_file = scan_and_prompt_epubs()
+        book_name = epub_file.stem  # e.g., sg0027_ki_k46_sample
+        
+        # Create temp extraction directory
+        temp_dir = Path("ebooks") / f"temp_{book_name}"
+        temp_dir.mkdir(exist_ok=True)
+        
+        try:
+            extract_epub(epub_file, temp_dir)
+            converter = EPUBToGobookConverter(str(temp_dir))
+            converter.save(book_name)
+        finally:
+            # Clean up temp directory
+            shutil.rmtree(temp_dir)
+            print(f"Cleaned up {temp_dir}")
+    else:
+        # Manual mode with arguments
+        epub_dir = sys.argv[1]
+        output_file = sys.argv[2] if len(sys.argv) > 2 else "output"
+        
+        if not Path(epub_dir).exists():
+            print(f"Error: Directory {epub_dir} does not exist")
+            sys.exit(1)
+        
+        converter = EPUBToGobookConverter(epub_dir)
+        converter.save(output_file)
 
 if __name__ == "__main__":
     main()
