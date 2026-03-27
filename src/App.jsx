@@ -75,6 +75,17 @@ function App() {
     return bookInfo
   }
 
+  const formatInlineText = (text) => {
+    if (!text) return ''
+    const escaped = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+    const withBold = escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    const withItalic = withBold.replace(/\*(.+?)\*/g, '<em>$1</em>')
+    return withItalic.replace(/\n/g, '<br/>')
+  }
+
   const handleFileLoad = async (event) => {
     const file = event.target.files[0]
     if (!file) return
@@ -141,10 +152,22 @@ function App() {
                 {chapter.content.map((item, itemIndex) => {
                   if (item.type === 'heading') {
                     const headingNum = Math.min(6, Number(item.level) + 1)
-                    const HeadingTag = `h${headingNum}` // h1 -> h2, h2 -> h3, h3 -> h4
-                    return <HeadingTag key={itemIndex} style={{ whiteSpace: 'pre-line' }}>{item.text}</HeadingTag>
+                    const HeadingTag = `h${headingNum}`
+                    return (
+                      <HeadingTag
+                        key={itemIndex}
+                        style={{ whiteSpace: 'pre-wrap', marginTop: '1em' }}
+                        dangerouslySetInnerHTML={{ __html: formatInlineText(item.text) }}
+                      />
+                    )
                   } else if (item.type === 'paragraph') {
-                    return <p key={itemIndex} style={{ lineHeight: '1.6', marginBottom: '1em', whiteSpace: 'pre-line' }}>{item.text}</p>
+                    return (
+                      <p
+                        key={itemIndex}
+                        style={{ lineHeight: '1.6', marginBottom: '1em', whiteSpace: 'pre-wrap' }}
+                        dangerouslySetInnerHTML={{ __html: formatInlineText(item.text) }}
+                      />
+                    )
                   }
                   return null
                 })}

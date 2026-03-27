@@ -182,13 +182,19 @@ class EPUBToGobookConverter:
         """Recursively extract text from element"""
         text = element.text or ""
         for child in element:
-            if child.tag.endswith('br') or child.tag.endswith('br'):
-                # In XHTML, <br/> indicates a line break between texts
+            tag = self.strip_tag(child.tag).lower()
+            if tag == 'br':
                 text += '\n'
-            text += self.extract_element_text(child)
+            elif tag in ('b', 'strong'):
+                text += '**' + self.extract_element_text(child) + '**'
+            elif tag in ('i', 'em'):
+                text += '*' + self.extract_element_text(child) + '*'
+            else:
+                text += self.extract_element_text(child)
+
             if child.tail:
-                # Preserve spacing after child text, but prevent accidental removal of line break
                 text += child.tail
+
         return text
 
     def parse_svg_to_diagram_info(self, svg, caption_text=None, container_size=None, full_size_override=None) -> Optional[Dict]:
