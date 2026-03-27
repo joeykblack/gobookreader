@@ -18,9 +18,9 @@ function App() {
     const lines = content.split('\n')
     const bookInfo = { title: '', author: '', chapters: [] }
     let currentChapter = null
-    let currentSection = null
+    let i = 0
 
-    for (let i = 0; i < lines.length; i++) {
+    while (i < lines.length) {
       const line = lines[i].trim()
 
       if (line.startsWith('::book(')) {
@@ -30,30 +30,46 @@ function App() {
           bookInfo.title = match[1]
           bookInfo.author = match[2]
         }
+        i++
       } else if (line.startsWith('::chapter(')) {
         currentChapter = { id: line, title: '', content: [] }
         bookInfo.chapters.push(currentChapter)
-        currentSection = null
+        i++
       } else if (line.startsWith('::h1') || line.startsWith('::h2') || line.startsWith('::h3')) {
         const level = line.substring(2, 3)
-        const headingText = lines[i + 1] || ''
-        if (currentChapter) {
-          currentSection = { type: 'heading', level, text: headingText }
-          currentChapter.content.push(currentSection)
+        i++ // Skip the ::h marker
+        // Collect heading text until blank line or ::
+        let headingLines = []
+        while (i < lines.length) {
+          const nextLine = lines[i].trim()
+          if (nextLine === '' || nextLine.startsWith('::')) break
+          headingLines.push(lines[i]) // Keep original formatting
+          i++
         }
-        i++ // Skip the next line as it's part of the heading
+        const headingText = headingLines.join('\n').trim()
+        if (currentChapter && headingText) {
+          currentChapter.content.push({ type: 'heading', level, text: headingText })
+        }
       } else if (line && !line.startsWith('::')) {
-        // Regular paragraph
-        if (currentChapter) {
-          if (!currentSection || currentSection.type !== 'paragraph') {
-            currentSection = { type: 'paragraph', text: line }
-            currentChapter.content.push(currentSection)
-          } else {
-            currentSection.text += ' ' + line
+        // Start of paragraph - collect until blank line or ::
+        let paraLines = []
+        while (i < lines.length) {
+          const nextLine = lines[i].trim()
+          if (nextLine.startsWith('::')) break
+          if (nextLine === '') {
+            i++
+            break
           }
+          paraLines.push(lines[i]) // Keep original formatting
+          i++
         }
+        const paraText = paraLines.join('\n').trim()
+        if (currentChapter && paraText) {
+          currentChapter.content.push({ type: 'paragraph', text: paraText })
+        }
+      } else {
+        i++
       }
-      // Skip ::diagram and other tags for now
     }
 
     return bookInfo
@@ -125,9 +141,9 @@ function App() {
                 {chapter.content.map((item, itemIndex) => {
                   if (item.type === 'heading') {
                     const HeadingTag = `h${parseInt(item.level) + 2}` // h1 -> h3, h2 -> h4, etc.
-                    return <HeadingTag key={itemIndex}>{item.text}</HeadingTag>
+                    return <HeadingTag key={itemIndex} style={{ whiteSpace: 'pre-line' }}>{item.text}</HeadingTag>
                   } else if (item.type === 'paragraph') {
-                    return <p key={itemIndex} style={{ lineHeight: '1.6', marginBottom: '1em' }}>{item.text}</p>
+                    return <p key={itemIndex} style={{ lineHeight: '1.6', marginBottom: '1em', whiteSpace: 'pre-line' }}>{item.text}</p>
                   }
                   return null
                 })}
