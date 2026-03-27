@@ -3,8 +3,8 @@ ebooks/*.epub
 !ebooks/*sample*.epub
 
 # GoBook files - ignore all except samples
-gobooks/*.gobook
-!gobooks/*sample*.gobook
+gobooks/*.gobk
+!gobooks/*sample*.gobk
 
 # Documents
 docs/gobookformat.pdf

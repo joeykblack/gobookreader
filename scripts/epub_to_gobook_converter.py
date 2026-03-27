@@ -8,6 +8,8 @@ import os
 import sys
 import re
 import xml.etree.ElementTree as ET
+import zipfile
+import shutil
 from pathlib import Path
 from typing import List, Tuple, Dict, Optional
 
@@ -489,24 +491,70 @@ class EPUBToGobookConverter:
         
         return "\n".join(gobook_lines)
     
+    def copy_images(self, book_dir: Path):
+        """Copy images from EPUB to book directory"""
+        img_src = self.ops_dir / "img"
+        img_dest = book_dir / "img"
+        
+        if img_src.exists():
+            shutil.copytree(img_src, img_dest, dirs_exist_ok=True)
+            print(f"Copied images from {img_src} to {img_dest}")
+        else:
+            print(f"No images found in {img_src}")
+
     def save(self, output_path: str):
-        """Convert and save to .gobook file"""
+        """Convert and save to .gobk zip file with folder structure"""
+        # Create book directory
+        book_name = Path(output_path).stem  # Remove .gobk extension
+        book_dir = Path("gobooks") / book_name
+        book_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Copy images
+        self.copy_images(book_dir)
+        
+        # Generate gobook content
         content = self.convert()
         
-        with open(output_path, 'w', encoding='utf-8') as f:
+        # Write gobook file
+        gobook_path = book_dir / f"{book_name}.gobook"
+        with open(gobook_path, 'w', encoding='utf-8') as f:
             f.write(content)
         
-        print(f"\nGobook file saved to: {output_path}")
+        print(f"Gobook file created: {gobook_path}")
         print(f"File size: {len(content)} bytes")
+        
+        # Create zip file
+        zip_path = Path(output_path)
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # Add gobook file
+            zipf.write(gobook_path, f"{book_name}.gobook")
+            
+            # Add images if they exist
+            img_dir = book_dir / "img"
+            if img_dir.exists():
+                for img_file in img_dir.rglob('*'):
+                    if img_file.is_file():
+                        # Store relative path in zip
+                        arcname = f"img/{img_file.name}"
+                        zipf.write(img_file, arcname)
+        
+        print(f"Gobk zip file created: {zip_path}")
+        
+        # Clean up temporary book directory (optional - could keep for debugging)
+        # shutil.rmtree(book_dir)
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python epub_to_gobook_converter.py <epub_extracted_dir> [output_file]")
-        print("Example: python epub_to_gobook_converter.py temp_epub_sg0027 sg0027_ki_k46.gobook")
+        print("Usage: python epub_to_gobook_converter.py <epub_extracted_dir> [output_file.gobk]")
+        print("Example: python epub_to_gobook_converter.py temp_epub_sg0027 sg0027_ki_k46.gobk")
         sys.exit(1)
     
     epub_dir = sys.argv[1]
-    output_file = sys.argv[2] if len(sys.argv) > 2 else "output.gobook"
+    output_file = sys.argv[2] if len(sys.argv) > 2 else "output.gobk"
+    
+    # Ensure output has .gobk extension
+    if not output_file.endswith('.gobk'):
+        output_file += '.gobk'
     
     if not Path(epub_dir).exists():
         print(f"Error: Directory {epub_dir} does not exist")
