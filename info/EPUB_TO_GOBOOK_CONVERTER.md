@@ -2,12 +2,12 @@
 
 ## Overview
 
-The **EPUB to GoBook Converter** (`scripts/epub_to_gobook_converter.py`) is a Python tool that converts EPUB-formatted Go books into the `.gobook` text-based format used by SmartGo One and other Go book applications.
+The **EPUB to GoBook Converter** (`scripts/epub_to_gobook_converter.py`) is a Python tool that converts EPUB-formatted Go books into the `.gobk` zip format used by SmartGo One and other Go book applications.
 
 The converter:
 - Extracts metadata (title, author) from EPUB OPF files
 - Parses XHTML chapter content into a linear flow of text and diagrams
-- Extracts SVG diagrams and converts them to `.gobook` format with:
+- Extracts SVG diagrams and converts them to `.gobk` format with:
   - Board size (`sz`)
   - Viewport (`vw`) for partial board views
   - Stone positions (`ab` for black, `aw` for white)
@@ -30,12 +30,12 @@ python3 scripts/epub_to_gobook_converter.py <epub_extracted_dir> <output_gobook_
 ### Arguments
 
 - `<epub_extracted_dir>`: Path to an extracted EPUB directory (must contain `OPS/` subdirectory with XHTML and SVG files)
-- `<output_gobook_file>`: Path where the `.gobook` output file will be written
+- `<output_gobk_file>`: Path where the `.gobk` output file will be written
 
 ### Example
 
 ```bash
-python3 scripts/epub_to_gobook_converter.py ebooks/temp_epub_sg0027 gobooks/sg0027_ki_k46.gobook
+python3 scripts/epub_to_gobook_converter.py ebooks/temp_epub_sg0027 gobooks/sg0027_ki_k46.gobk
 ```
 
 ## EPUB Structure Requirements
@@ -117,7 +117,7 @@ The converter extracts move numbers and generates the `mv` (move sequence) strin
 
 ## GoBook Output Format
 
-The output `.gobook` file is a text-based format with elements prefixed by `::`.
+The output `.gobk` file is a zip archive containing the `.gobook` text file and any images (such as cover images) from the EPUB.
 
 ### Example Output
 
@@ -252,14 +252,14 @@ The converter maintains:
 
 ```bash
 # Basic conversion
-python3 scripts/epub_to_gobook_converter.py ebooks/temp_epub gobooks/output.gobook
+python3 scripts/epub_to_gobook_converter.py ebooks/temp_epub gobooks/output.gobk
 
 # With shell output
-python3 scripts/epub_to_gobook_converter.py ebooks/temp_epub gobooks/output.gobook > conversion.log 2>&1
+python3 scripts/epub_to_gobook_converter.py ebooks/temp_epub gobooks/output.gobk > conversion.log 2>&1
 
 # In a shell loop (multiple EPUBs)
 for epub in ebooks/temp_*; do
-  python3 scripts/epub_to_gobook_converter.py "$epub" "gobooks/$(basename $epub).gobook"
+  python3 scripts/epub_to_gobook_converter.py "$epub" "gobooks/$(basename $epub).gobk"
 done
 ```
 

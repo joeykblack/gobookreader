@@ -61,7 +61,7 @@ The GoBook Reader allows users to load, read, and interact with Go books in the 
 
 ### Usage
 
-1. **Loading a Book**: Click "Load GoBook" and select a `.gobook` file
+1. **Loading a Book**: Click "Load GoBook" and select a `.gobk` file
 2. **Reading**: Navigate through chapters using the table of contents
 3. **Diagrams**: Click on board intersections to interact with problems
 4. **Bookmarks**: Use the bookmark button to save positions
