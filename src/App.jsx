@@ -121,9 +121,7 @@ function App() {
           <div>
             {bookData.chapters.map((chapter, chapterIndex) => (
               <div key={chapterIndex} style={{ marginBottom: '40px' }}>
-                <h2 style={{ borderBottom: '1px solid #ccc', paddingBottom: '10px' }}>
-                  Chapter {chapterIndex + 1}
-                </h2>
+                <div style={{ borderBottom: '1px solid #ccc', margin: '20px 0' }}></div>
                 {chapter.content.map((item, itemIndex) => {
                   if (item.type === 'heading') {
                     const HeadingTag = `h${parseInt(item.level) + 2}` // h1 -> h3, h2 -> h4, etc.
