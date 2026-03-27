@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "mkdir -p docs/gobooks && for dir in gobooks/*/; do if [ -d \"$dir\" ]; then zip -r \"docs/gobooks/$(basename \"$dir\").gobk\" \"$dir\" && rm -rf \"$dir\"; fi; done",
+    "postbuild": "mkdir -p docs/gobooks && for dir in gobooks/*/; do if [ -d \"$dir\" ]; then zip -r \"docs/gobooks/$(basename \"$dir\").gobk\" \"$dir\"; fi; done",
     "preview": "vite preview"
   },
   "dependencies": {
