@@ -4,6 +4,10 @@ import './App.css'
 
 function App() {
   const [bookData, setBookData] = useState(null)
+  const [nightMode, setNightMode] = useState(() => {
+    const savedNightMode = localStorage.getItem('gobookNightMode')
+    return savedNightMode === null ? false : savedNightMode === 'true'
+  })
 
   useEffect(() => {
     // Load book from localStorage on mount
@@ -13,6 +17,16 @@ function App() {
       setBookData(parsed)
     }
   }, [])
+
+  useEffect(() => {
+    localStorage.setItem('gobookNightMode', nightMode)
+  }, [nightMode])
+
+  useEffect(() => {
+    document.documentElement.style.backgroundColor = nightMode ? '#000' : '#fff'
+    document.body.style.backgroundColor = nightMode ? '#000' : '#fff'
+    document.body.style.color = nightMode ? '#fff' : '#222'
+  }, [nightMode])
 
   const parseGobook = (content) => {
     const lines = content.split('\n')
@@ -119,36 +133,77 @@ function App() {
     }
   }
 
+  const contentWidth = 'min(800px, calc(100% - 40px))'
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>GoBook Reader</h1>
-        <p>A web-based Go book reader with interactive diagrams</p>
-        <div style={{ marginTop: '20px' }}>
-          <label htmlFor="gobk-file" style={{ marginRight: '10px' }}>
-            Load GoBook (.gobk file):
-          </label>
-          <input
-            id="gobk-file"
-            type="file"
-            accept=".gobk"
-            onChange={handleFileLoad}
-            style={{ padding: '5px' }}
-          />
-        </div>
-        {bookData && (
-          <div style={{ marginTop: '20px', textAlign: 'center' }}>
-            <h2>{bookData.title}</h2>
-            <p><em>by {bookData.author}</em></p>
+    <div
+      className="App"
+      style={{
+        background: nightMode ? '#000' : '#fff',
+        color: nightMode ? '#fff' : '#222',
+        minHeight: '100vh',
+        width: '100%',
+        transition: 'background 0.2s, color 0.2s',
+      }}
+    >
+      <header
+        className="App-header"
+        style={{
+          background: nightMode ? '#000' : undefined,
+          color: nightMode ? '#fff' : undefined,
+          transition: 'background 0.2s, color 0.2s',
+        }}
+      >
+        <div style={{ width: contentWidth, margin: '0 auto' }}>
+          <h1 style={{ color: nightMode ? '#fff' : undefined }}>GoBook Reader</h1>
+          <p style={{ color: nightMode ? '#fff' : undefined }}>A web-based Go book reader with interactive diagrams</p>
+          <div style={{ marginTop: '20px' }}>
+            <label htmlFor="gobk-file" style={{ marginRight: '10px' }}>
+              Load GoBook (.gobk file):
+            </label>
+            <input
+              id="gobk-file"
+              type="file"
+              accept=".gobk"
+              onChange={handleFileLoad}
+              style={{ padding: '5px', background: nightMode ? '#222' : undefined, color: nightMode ? '#fff' : undefined, border: nightMode ? '1px solid #444' : undefined }}
+            />
           </div>
-        )}
+          <div style={{ marginTop: '10px' }}>
+            <label htmlFor="night-mode-toggle" style={{ marginRight: '10px', color: nightMode ? '#fff' : undefined }}>
+              <input
+                id="night-mode-toggle"
+                type="checkbox"
+                checked={nightMode}
+                onChange={e => setNightMode(e.target.checked)}
+                style={{ marginRight: '6px' }}
+              />
+              Night mode
+            </label>
+          </div>
+          {bookData && (
+            <div style={{ marginTop: '20px', textAlign: 'center' }}>
+              <h2 style={{ color: nightMode ? '#fff' : undefined }}>{bookData.title}</h2>
+              <p><em style={{ color: nightMode ? '#fff' : undefined }}>by {bookData.author}</em></p>
+            </div>
+          )}
+        </div>
       </header>
-      <main style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+      <main
+        style={{
+          padding: '20px 0',
+          width: contentWidth,
+          margin: '0 auto',
+          background: nightMode ? '#000' : undefined,
+          color: nightMode ? '#fff' : undefined,
+          transition: 'background 0.2s, color 0.2s',
+        }}
+      >
         {bookData ? (
           <div>
             {bookData.chapters.map((chapter, chapterIndex) => (
               <div key={chapterIndex} style={{ marginBottom: '40px' }}>
-                <div style={{ borderBottom: '1px solid #ccc', margin: '20px 0' }}></div>
+                <div style={{ borderBottom: nightMode ? '1px solid #444' : '1px solid #ccc', margin: '20px 0' }}></div>
                 {chapter.content.map((item, itemIndex) => {
                   if (item.type === 'heading') {
                     const headingNum = Math.min(6, Number(item.level) + 1)
@@ -156,7 +211,7 @@ function App() {
                     return (
                       <HeadingTag
                         key={itemIndex}
-                        style={{ whiteSpace: 'pre-wrap', marginTop: '1em' }}
+                        style={{ whiteSpace: 'pre-wrap', marginTop: '1em', color: nightMode ? '#fff' : undefined }}
                         dangerouslySetInnerHTML={{ __html: formatInlineText(item.text) }}
                       />
                     )
@@ -164,7 +219,7 @@ function App() {
                     return (
                       <p
                         key={itemIndex}
-                        style={{ lineHeight: '1.6', marginBottom: '1em', whiteSpace: 'pre-wrap' }}
+                        style={{ lineHeight: '1.6', marginBottom: '1em', whiteSpace: 'pre-wrap', color: nightMode ? '#fff' : undefined }}
                         dangerouslySetInnerHTML={{ __html: formatInlineText(item.text) }}
                       />
                     )
@@ -175,7 +230,7 @@ function App() {
             ))}
           </div>
         ) : (
-          <p>Load a .gobk file to start reading!</p>
+          <p style={{ color: nightMode ? '#fff' : undefined }}>Load a .gobk file to start reading!</p>
         )}
       </main>
     </div>
