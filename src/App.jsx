@@ -82,7 +82,7 @@ function App() {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
     const withBold = escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    const withItalic = withBold.replace(/\*(.+?)\*/g, '<em>$1</em>')
+    const withItalic = withBold.replace(/__([^\n]+?)__/g, '<em>$1</em>')
     return withItalic.replace(/\n/g, '<br/>')
   }
 

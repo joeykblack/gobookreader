@@ -188,7 +188,7 @@ class EPUBToGobookConverter:
             elif tag in ('b', 'strong'):
                 text += '**' + self.extract_element_text(child) + '**'
             elif tag in ('i', 'em'):
-                text += '*' + self.extract_element_text(child) + '*'
+                text += '__' + self.extract_element_text(child) + '__'
             else:
                 text += self.extract_element_text(child)
 
