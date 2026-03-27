@@ -1,0 +1,44 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.App {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.App-header {
+  padding: 2rem 0;
+  border-bottom: 1px solid #333;
+  margin-bottom: 2rem;
+}
+
+.App-header h1 {
+  margin: 0 0 0.5rem 0;
+  color: #646cff;
+}
+
+.App-header p {
+  margin: 0;
+  color: #888;
+  font-size: 1.2rem;
+}
+
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+main p {
+  font-size: 1.5rem;
+  color: #666;
+  max-width: 600px;
+  line-height: 1.6;
+}
