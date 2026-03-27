@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "mkdir -p docs/gobooks && cp gobooks/*sample*.gobk docs/gobooks/ 2>/dev/null || true",
     "preview": "vite preview"
   },
   "dependencies": {

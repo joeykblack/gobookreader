@@ -35,8 +35,10 @@ python3 scripts/epub_to_gobook_converter.py <epub_extracted_dir> <output_gobook_
 ### Example
 
 ```bash
-python3 scripts/epub_to_gobook_converter.py ebooks/temp_epub_sg0027 gobooks/sg0027_ki_k46.gobk
+python3 scripts/epub_to_gobook_converter.py ebooks/temp_epub_sg0027 sg0027_ki_k46.gobk
 ```
+
+The `.gobk` file will be created in the `docs/gobooks/` directory.
 
 ## EPUB Structure Requirements
 
@@ -252,16 +254,18 @@ The converter maintains:
 
 ```bash
 # Basic conversion
-python3 scripts/epub_to_gobook_converter.py ebooks/temp_epub gobooks/output.gobk
+python3 scripts/epub_to_gobook_converter.py ebooks/temp_epub output.gobk
 
 # With shell output
-python3 scripts/epub_to_gobook_converter.py ebooks/temp_epub gobooks/output.gobk > conversion.log 2>&1
+python3 scripts/epub_to_gobook_converter.py ebooks/temp_epub output.gobk > conversion.log 2>&1
 
 # In a shell loop (multiple EPUBs)
 for epub in ebooks/temp_*; do
-  python3 scripts/epub_to_gobook_converter.py "$epub" "gobooks/$(basename $epub).gobk"
+  python3 scripts/epub_to_gobook_converter.py "$epub" "$(basename $epub).gobk"
 done
 ```
+
+The `.gobk` files will be created in the `docs/gobooks/` directory.
 
 ## Format Reference
 

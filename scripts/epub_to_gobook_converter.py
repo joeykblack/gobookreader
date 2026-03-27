@@ -506,7 +506,7 @@ class EPUBToGobookConverter:
         """Convert and save to .gobk zip file with folder structure"""
         # Create book directory
         book_name = Path(output_path).stem  # Remove .gobk extension
-        book_dir = Path("gobooks") / book_name
+        book_dir = Path("docs/gobooks") / book_name
         book_dir.mkdir(parents=True, exist_ok=True)
         
         # Copy images
@@ -524,7 +524,7 @@ class EPUBToGobookConverter:
         print(f"File size: {len(content)} bytes")
         
         # Create zip file
-        zip_path = Path(output_path)
+        zip_path = Path("docs/gobooks") / f"{book_name}.gobk"
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
             # Add gobook file
             zipf.write(gobook_path, f"{book_name}.gobook")
