@@ -15,6 +15,9 @@ The converter:
   - Captions (`ca`)
 - Handles multi-language chapters
 - Preserves book structure (chapters, headings, paragraphs)
+- **Stages** the `.gobook` text file and images in a folder under `gobooks/` for later zipping
+
+The final `.gobk` zip file is created during the npm build process.
 
 ## Requirements
 
@@ -24,21 +27,21 @@ The converter:
 ## Usage
 
 ```bash
-python3 scripts/epub_to_gobook_converter.py <epub_extracted_dir> <output_gobook_file>
+python3 scripts/epub_to_gobook_converter.py <epub_extracted_dir> <book_name>
 ```
 
 ### Arguments
 
 - `<epub_extracted_dir>`: Path to an extracted EPUB directory (must contain `OPS/` subdirectory with XHTML and SVG files)
-- `<output_gobk_file>`: Path where the `.gobk` output file will be written
+- `<book_name>`: Name for the book (used for staging folder and final `.gobk` file)
 
 ### Example
 
 ```bash
-python3 scripts/epub_to_gobook_converter.py ebooks/temp_epub_sg0027 sg0027_ki_k46.gobk
+python3 scripts/epub_to_gobook_converter.py ebooks/temp_epub_sg0027 sg0027_ki_k46_sample
 ```
 
-The `.gobk` file will be created in the `docs/gobooks/` directory.
+This stages the files in `gobooks/sg0027_ki_k46_sample/`. Run `npm run build` to create `docs/gobooks/sg0027_ki_k46_sample.gobk`.
 
 ## EPUB Structure Requirements
 
@@ -253,16 +256,19 @@ The converter maintains:
 ## Command-Line Usage
 
 ```bash
-# Basic conversion
-python3 scripts/epub_to_gobook_converter.py ebooks/temp_epub output.gobk
+# Basic conversion (stages files)
+python3 scripts/epub_to_gobook_converter.py ebooks/temp_epub output
 
 # With shell output
-python3 scripts/epub_to_gobook_converter.py ebooks/temp_epub output.gobk > conversion.log 2>&1
+python3 scripts/epub_to_gobook_converter.py ebooks/temp_epub output > conversion.log 2>&1
 
 # In a shell loop (multiple EPUBs)
 for epub in ebooks/temp_*; do
-  python3 scripts/epub_to_gobook_converter.py "$epub" "$(basename $epub).gobk"
+  python3 scripts/epub_to_gobook_converter.py "$epub" "$(basename $epub)"
 done
+
+# Then build to create .gobk files
+npm run build
 ```
 
 The `.gobk` files will be created in the `docs/gobooks/` directory.

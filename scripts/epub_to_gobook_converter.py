@@ -503,10 +503,10 @@ class EPUBToGobookConverter:
             print(f"No images found in {img_src}")
 
     def save(self, output_path: str):
-        """Convert and save to .gobk zip file with folder structure"""
+        """Stage gobook text file and images in a folder under gobooks/ for later zipping"""
         # Create book directory
         book_name = Path(output_path).stem  # Remove .gobk extension
-        book_dir = Path("docs/gobooks") / book_name
+        book_dir = Path("gobooks") / book_name
         book_dir.mkdir(parents=True, exist_ok=True)
         
         # Copy images
@@ -520,28 +520,10 @@ class EPUBToGobookConverter:
         with open(gobook_path, 'w', encoding='utf-8') as f:
             f.write(content)
         
-        print(f"Gobook file created: {gobook_path}")
+        print(f"Gobook file staged: {gobook_path}")
         print(f"File size: {len(content)} bytes")
         
-        # Create zip file
-        zip_path = Path("docs/gobooks") / f"{book_name}.gobk"
-        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            # Add gobook file
-            zipf.write(gobook_path, f"{book_name}.gobook")
-            
-            # Add images if they exist
-            img_dir = book_dir / "img"
-            if img_dir.exists():
-                for img_file in img_dir.rglob('*'):
-                    if img_file.is_file():
-                        # Store relative path in zip
-                        arcname = f"img/{img_file.name}"
-                        zipf.write(img_file, arcname)
-        
-        print(f"Gobk zip file created: {zip_path}")
-        
-        # Clean up temporary book directory (optional - could keep for debugging)
-        # shutil.rmtree(book_dir)
+        # Note: Zipping will be done during npm build
 
 def main():
     if len(sys.argv) < 2:
