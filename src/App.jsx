@@ -36,7 +36,7 @@ function App() {
         bookInfo.chapters.push(currentChapter)
         i++
       } else if (line.startsWith('::h1') || line.startsWith('::h2') || line.startsWith('::h3')) {
-        const level = line.substring(2, 3)
+        const level = Number(line.charAt(3)) || 1
         i++ // Skip the ::h marker
         // Collect heading text until blank line or ::
         let headingLines = []
@@ -140,7 +140,8 @@ function App() {
                 <div style={{ borderBottom: '1px solid #ccc', margin: '20px 0' }}></div>
                 {chapter.content.map((item, itemIndex) => {
                   if (item.type === 'heading') {
-                    const HeadingTag = `h${parseInt(item.level) + 2}` // h1 -> h3, h2 -> h4, etc.
+                    const headingNum = Math.min(6, Number(item.level) + 1)
+                    const HeadingTag = `h${headingNum}` // h1 -> h2, h2 -> h3, h3 -> h4
                     return <HeadingTag key={itemIndex} style={{ whiteSpace: 'pre-line' }}>{item.text}</HeadingTag>
                   } else if (item.type === 'paragraph') {
                     return <p key={itemIndex} style={{ lineHeight: '1.6', marginBottom: '1em', whiteSpace: 'pre-line' }}>{item.text}</p>
