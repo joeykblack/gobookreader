@@ -1,0 +1,955 @@
+::book(#graded_go_problems_for_beginners_1) title="Graded Go Problems for Beginners 1" author="Kano Yoshinori 9 dan"
+
+::chapter(#ch0)
+
+© 1985 by Kano YoshinoriEnglish Translation © 1985, 2011 Richard Bozulich
+
+::h1
+Graded Go ProblemsFor Beginners
+
+Volume OneIntroductory Problems
+
+Kano Yoshinori 9-danTranslated by Richard Bozulich
+
+Buy the full book at gobooks.com
+
+Graded Go Problems for Beginners are the ideal books for players who have just learned the rules of Go, bridging the gap between a beginner’s book and some of the more ‘advanced’ elementary books.
+
+The almost 1,500 problems these four volumes contain thoroughly drill the reader in the fundamentals of the game. Once you have finished studying these four books, you will have mastered the elements of capturing and defending stones, life and death of groups, elementary tactics, the opening, and the endgame, thus laying a solid foundation for his future progress.
+
+Volume One contains 239 introductory level problems (30-kyu to 25-kyu). It’s an ideal companion to Cho Chikun’s “A Complete Introduction to the Game”.
+
+
+::chapter(#ch1)
+
+This EPUB is provided without Digital Rights Management (DRM), allowing you to read it on your EPUB reader of choice. We trust that you use this EPUB file for your personal use only. Buying the book at gobooks.com ensures that authors and publishers get paid, and makes it possible for us to convert more books to digital format.
+
+This EPUB contains interactive go diagrams, which not all EPUB readers handle correctly. Please see gobooks.com/epub.html for recommended EPUB reading apps. You can get a download link to a more compatible EPUB version containing only static diagrams at gobooks.com/support.html.
+
+This EPUB reader does not support full scripting, so diagrams may not be interactive.
+
+This EPUB includes problem diagrams. If your EPUB reader supports interactivity, you can tap on the diagram to verify that you found the right solution. To get a hint, tap on the status box in the top right of the problem.
+
+To make sure the solution diagram of a problem is hidden, switch to a view that shows one page at a time (e.g. portrait layout).
+
+::h2
+Copyright Page
+
+Published byKiseido Publishing CompanyCPO Box 1140Tokyo, Japan
+
+Copyright © 1985 by Kano YoshinoriEnglish Translation Copyright © 1985, 2011 Richard Bozulich
+
+All rights reserved according to international law. This book and parts thereof may not be reproduced in any form without written permission from the publisher.
+
+
+::chapter(#contents)
+
+::h2
+Contents
+
+Graded Go Problems for BeginnersVolume OneIntroductory Problems
+
+Copyright Page
+
+About the Author & Translator
+
+Preface
+
+How to Play Go
+
+Glossary of Japanese Go Terms
+
+Introductory Problems Level One
+
+How to Capture Stones
+
+How to Save Endangered Stones
+
+The chapters in gray are included only in the full book.
+
+Recognizing Atari
+
+Connecting and Separating Stones
+
+Ko
+
+Ladders
+
+Living Groups and Dead Groups
+
+How to Play in the Opening
+
+Endgame and Other Moves
+
+Introductory Problems Level Two
+
+How to Capture Stones
+
+How to Save Endangered Stones
+
+How to Give Atari
+
+Ladders
+
+Snapback and Related Moves
+
+Connecting and Separating Stones
+
+Living Groups and Dead Groups
+
+Ko
+
+How to Play in the Opening
+
+Endgame
+
+Introductory Problems Level ThreeLife and Death Problems
+
+Making Life
+
+Killing Groups
+
+Life and Death
+
+Seki
+
+Ko
+
+Capturing Races
+
+Introductory Problems Level Four
+
+Atari
+
+Capturing Races
+
+Nets
+
+Snapback
+
+Oiotoshi
+
+Brilliant Moves and Bad Moves
+
+Seki
+
+Connecting and Separating Stones
+
+Living Groups and Dead Groups
+
+How to Play in the Opening
+
+Endgame
+
+Go Books from Kiseido
+
+Buy This Book
+
+About SmartGo Books
+
+
+::chapter(#ch2)
+
+::h2
+About the Author & Translator
+
+Kano Yoshinori was born on April 14, 1928 in Kyoto and died on May 2, 1999. He came to Tokyo at the age of nine and became a disciple of Suzuki Hideko 5-dan. He became 1-dan in 1943 and in 1968 he attained the top rank of 9-dan. In 1948 he won the Young Professional’s Championship, in 1955 he won the top section of the Oteai, and in 1961 he won the 5th Prime Minister’s Cup. He played in the 14th, 20th, 25th, and 26th Honinbo leagues. In 1975 he went to Austria and Russia, then in 1979 he led a team of high school go players to China for a goodwill match. He graduated from the Japanese Literature Department of Japan University, making him one of the few professional go players to have graduated from university. His most prominent disciple is the Taiwanese go player, O Rissei 9-dan, winner of the 2000 and 2001 Kisei titles. In 2001 he won the Judan title which he currently holds.
+
+Richard Bozulich is the president of Kiseido Publishing Company. He learned how to play go in 1958 while a studying mathematics at the University of California, Berkeley. He came to Japan in 1967 to study go and founded The Ishi Press for the purpose of publishing go books in English. In 1982, he founded Kiseido. Invincible: The Games of Shusaku by John Power was its first publication.
+
+
+::chapter(#ch3)
+
+::h2
+Preface
+
+This collection of problems is intended for players who are learning the rules of go. They cover all phases of the game, from the opening to the endgame; the third part is devoted to life-and-death problems.
+
+It is assumed that the reader is studying a good beginner’s book on go, such as Go: A Complete Introduction to the Game. For reference, we have included a brief summary of the rules.
+
+It is my hope that by studying and solving the problems in these four volumes, the reader will establish a solid foundation on which to base his future progress.
+
+March, 1985Kano Yoshinori 9-dan
+
+
+::chapter(#ch4)
+
+::h2
+How to Play Go
+
+Go is usually played on a 19x19 grid, or board, resulting in 361 intersections on which the pieces, or stones as they are usually called, are placed. Dia. 1 shows the empty board. Note the nine marked points on the board. These points are referred to as the ‘star points’. They serve as points of reference, as well as markers on which stones are placed in handicap games.
+
+Although most go games are played on a 19x19 board, beginners often learn the game on a 9x9 board with 81 intersections. After a few games they will move up to the 13x13 board, then graduate to the standard 19x19 board.
+
+A standard go set contains 361 stones: 181 black stones and 180 white. They are put inside containers, called bowls.
+
+To play go, it is necessary to learn only a few simple rules. We will first start with seven general rules.
+
+::h3
+General Rules
+
+1. Go is played by two people.
+
+2. One side plays with the black stones, the other side with the white ones. The players take turns playing their moves, one at a time.
+
+3. A move consists of placing a stone on an intersection of the board. Stones can also be placed on the edge and corner points.
+
+4. Once a stone is placed on an intersection, it cannot be moved to another point.
+
+5. When there is a difference in strength between the contestants, the weaker player places extra stones on the board to compensate for the difference in strength.
+
+6. In an even game, the side holding the black stones always plays first, but in a handicap game, it is White who plays first.
+
+7. The object of the game is to take more territory than your opponent.
+
+::h4
+An Example Game
+
+To show how the game of go is played and its objective is achieved, we present a game on a 9x9 board. Don’t think so much about the reasons for the moves, rather, concentrate on how Black and White form territory.
+
+::dia(#ch4_dia0) sz=19 vw=L1T9 base=none at=1 mv=P5Q7P3O6N5N6R6R7O5 ab="N5 O5 P3 P5 R6" aw="N6 O6 Q7 R7"
+Figure 1
+
+Figure 1 (1–9). Black plays his first move on the central point and White plays 2. With the sequence to Black 9, White has staked out the top as his territory and Black has laid claim to the bottom.
+
+::dia(#ch4_dia1) sz=19 vw=L1T9 base=none at=1 mv=S6R5S5P6P7S4M5M4M6T5S7L5L6L4T6T4Q6Q5 ab="L4 L5 M4 N5 O5 P3 P5 P6 Q5 R5 R6 S4 T4 T5" aw="L6 M5 M6 N6 O6 P7 Q6 Q7 R7 S5 S6 S7 T6"
+Figure 2
+
+Figure 2 (10–27). White 10 and 12 reduce the size of Black’s territory at the bottom. Before blocking at 15, Black plays 13, threatening to break into White’s territory at the top. White must defend with 14. White again expands his territory with 16 and 18, while reducing Black’s. Black 19 forces White to connect at 20. After Black plays 27, the boundaries of Black’s and White’s territories have been defined and the game is over.
+
+::dia(#ch4_dia2) sz=19 vw=L1T9 base=none at=1 ab="L4 L5 M4 N5 O5 P3 P5 P6 Q5 R5 R6 S4 T4 T5" aw="L6 M5 M6 N6 O6 P7 Q6 Q7 R7 S5 S6 S7 T6"
+Figure 3
+
+Figure 3 shows the result. White has taken control of 23 intersections and Black 31. Therefore, Black wins by 8 points.
+
+::h3
+Four Technical Rules
+
+::h4
+1. Capturing Stones
+
+::dia(#ch4_dia3) sz=13 vw=A1N13 base=none at=1 mv=A13A7H7B13A6J7 ab="A12 A6 A8 B13 B7 G7 H6 H8 J7" aw="A13 A7 H7"
+Dia. 2
+
+A stone can be captured if all the lines leading out to adjacent intersections are blocked by the opponent’s stones. In Dia. 2, if Black plays 1 in any of these three positions, the white stone will be captured and taken off the board. The stone that is threatened with capture is said to be in ‘atari’.
+
+::dia(#ch4_dia4) sz=13 vw=A1N13 base=none at=1 mv=C13D13E13C12K5J4K4F13K6 ab="B12 B13 C11 D12 E12 F13 H4 J3 J5 K3 K6 L4 L5" aw="B11 C12 C13 D13 E13 H5 J4 K4 K5 L3"
+Dia. 3
+
+This rule also applies to groups of two or more stones. For example, Black can capture three stones and take them off the board in the lower right of Dia. 3 by playing at 1. Black 1 in the upper left also captures four stones.
+
+::dia(#ch4_dia5) sz=13 vw=E1N9 base=none at=1 mv=F5F6F7E5 ab="E5 F4 F6 G5 H5 J3 J5 J6 L5 L6 M4" aw="F5 F7 G6 H6 J7 K7 L7 M5 M6"
+Dia. 4
+
+In the previous example game, no captures were made, but there were a few threats to capture. For example, when Black played 17 in Figure 2, White defended with 18. If White had ignored Black 17 (the marked stone in Dia. 4), Black could atari the marked stone with 1 in Dia. 4. White could also atari with 2, but Black would capture with 3.
+
+::dia(#ch4_dia6) sz=13 vw=E1N9 base=none at=1 mv=F5F6E5E4E6E7 ab="E4 E7 F4 F6 G5 H5 J3 J5 J6 L5 L6 M4" aw="E5 E6 F5 G6 H6 J7 K7 L7 M5 M6"
+Dia. 5
+
+Suppose White tries to escape by extending to 2 in Dia. 5. Black pursues him by making another atari with 3. White continues his attempt to escape by crawling to 4. Even though this move is an atari, White has not gotten out of atari himself and Black captures three white stones with 5.
+
+::dia(#ch4_dia7) sz=13 vw=E1N9 base=none at=1 mv=M6M5M7M8N6 ab="F4 G5 H5 J3 J5 J6 L5 L6 M4 M7 N5 N6" aw="F5 F6 G6 H6 J7 K7 L7 M5 M6 M8"
+Dia. 6
+
+Now look at Black 19 in Figure 2 (the marked stone in Dia. 6). We said that this move forces White to defend at 20. What happens if he doesn’t defend? Black will atari two stones with 1 in Dia. 6. There is no way to escape, so White must atari with 2 and Black captures two stones with 3.
+
+What about White 22 and 24 in Figure 2? Both these moves are atari and Black defends against capture by connecting at 23 and 25 respectively.
+
+Please note that defending against an atari is not mandatory. There are many positions in which the best move is not to defend.
+
+::h4
+2. Suicide Is Illegal
+
+::dia(#ch4_dia8) sz=13 vw=A1N13 base=none at=1 ab="A12 B13 C4 D3 D5 E3 E5 F13 F4 G12 H13 J8 K7 K9 L8" aw="A13 D4 E4 G13 K8"
+Dia. 7
+
+Although a player can make a move anywhere he chooses, there are two restrictions. The first one is the prohibition against suicide. In the four positions shown in Dia. 7, White 1 are illegal moves. That is, White is not allowed to play on these points because he places his stone(s) in atari and they will be taken off the board. However, you should note that there is no restriction on Black with respect to playing on these points.
+
+::dia(#ch4_dia9) sz=13 vw=A1N13 base=none at=1 ab="C5 D4 D6 E5 F10 G11 G9 H11 H4 H5 H9 J10 J3 J6 K4 K6 L5" aw="C4 D3 D5 E4 F11 G10 G12 H10 H12 J11 J4 J5 K3 K5 L4"
+Dia. 8
+
+The moves Black 1 in Dia. 8 may seem illegal, like the ones in Dia. 4, but even though Black seems to be playing on prohibited points, he is capturing stones, so these moves are not illegal. In other words, capturing stones takes priority over illegal moves.
+
+::h4
+3. Ko
+
+::dia(#ch4_dia10) sz=13 vw=G1N7 base=none at=1 mv=J5 ab="J5 K4 K6 L5" aw="H5 J4 J6 K5"
+Dia. 9
+
+Look at the position in Dia. 9 where Black captures a stone with 1. The result is shown in Dia. 10.
+
+::dia(#ch4_dia11) sz=13 vw=G1N7 base=none at=1 ab="J5 K4 K6 L5" aw="H5 J4 J6"
+Dia. 10
+
+::dia(#ch4_dia12) sz=13 vw=G1N7 base=none at=1 mv=K5 ab="J5 K4 K6 L5" aw="H5 J4 J6 K5"
+Dia. 11
+
+You might think that White could recapture with 1 in Dia. 11, but the position in Dia. 12 is the same as Dia. 9.
+
+::dia(#ch4_dia13) sz=13 vw=G1N7 base=none at=1 ab="K4 K6 L5" aw="H5 J4 J6 K5"
+Dia. 12
+
+If Black were allowed to recapture again, an endless repetition of capture—recapture could result if both sides refuse to stop. This kind of situation is called a ko.
+
+To prevent this from happening, the following special rule was created:
+
+If one side captures a stone in a ko, the other side cannot recapture on the next move.
+
+Another way this rule is stated is:
+
+No move is allowed that will recreate a previous board position.
+
+The next example on a 13x13 board shows how a ko can arise in a game.
+
+::dia(#ch4_dia14) sz=13 vw=A1N13 base=none at=1 mv=K10K4C10C4L6E3L4L3K5J4M3M4M5L5 ab="C10 K10 K5 L4 L6 M3 M5" aw="C4 E3 J4 K4 L3 L5 M4"
+Figure 4
+
+Figure 4 (1–14). Black stakes out the top with 1 and 3, while White plays 2 and 4 at the bottom. The game continues to Black 13, after which White captures the stone at 7 with 14, starting a ko.
+
+::dia(#ch4_dia15) sz=13 vw=A1N13 base=none at=1 mv=L5D3D4L4 ab="C10 D3 K10 K5 L4 L6 M3 M5" aw="C4 D4 E3 J4 K4 L3 L5 M4"
+Figure 5
+
+Figure 5 (15–17). Because of the ko rule, Black cannot immediately capture the stone at 14. Therefore, he plays elsewhere at 15, threatening to split White’s stones on the lower left in two. If White defends with 16, Black can capture the ko at 17.
+
+::dia(#ch4_dia16) sz=13 vw=A1N13 base=none at=1 mv=M4D10N4C9 ab="C10 D3 K10 K5 L4 L6 M3 M5 N4" aw="C4 C9 D10 D4 E3 J4 K4 L3 M4"
+Figure 6
+
+Figure 6 (18–20). It is White’s turn to make a ko threat. He attaches at 18. Black captures a stone with 19, ending the ko, but White takes the initiative at the top with 20.
+
+::dia(#ch4_dia17) sz=13 vw=A1N13 base=none at=1 mv=D3L4D4 ab="C10 D3 D4 K10 K5 L6 M3 M5" aw="C4 E3 J4 K4 L3 L4 L5 M4"
+Figure 7
+
+Figure 7 (15–17). Instead of 16 in Figure 5, White might choose to end the ko by connecting with 16. In that case, Black would split the white stones on the left in two by playing 17. Regardless of the strategic merits of these moves, this game shows how a ko is fought.
+
+::h4
+4. The End of the Game
+
+The game is over when there are no longer any profitable points to be taken. This stage has been reached in Dia. 13. Four things must now be done.
+
+A.	Both sides must first agree that the game is over.
+
+B.	The neutral points are filled and the defects in one’s territory are defended.
+
+C.	The dead stones are removed from the board and placed in the opponent’s territory.
+
+D.	The amount of territory each side has is counted.
+
+::dia(#ch4_dia18) sz=13 vw=A1N13 base=none at=1 ab="A5 B4 B6 C10 C3 C5 C6 C7 C9 D3 D7 D9 E4 E5 E6 F10 F2 F3 F4 F6 G1 G10 G11 G12 G2 G9 H1 H11 H13 H7 H8 H9 J12 J7 J9 K10 K12 K8 L10 L11 L7 L9 M7 M8 N8" aw="A6 A7 B7 B8 C11 C8 D10 D12 D8 E10 E13 E2 E3 E7 E9 F1 F11 F12 F13 F7 F9 G13 G3 G5 G6 G7 G8 H2 H3 H4 H5 J1 J4 J6 K2 K5 K6 L3 L4 L6 M6 N6 N7"
+Dia. 13
+
+In Dia. 13, the points marked with an ✕ are the neutral points. Since they have no value, it doesn’t matter which side plays them, but it is customary for the players to take turns filling them as is done in Dia. 14. Neither side has any defects, so defensive moves are not necessary.
+
+::dia(#ch4_dia19) sz=13 vw=A1N13 base=none at=1 mv=G4F5H6K7 ab="A5 B4 B6 C3 C5 C6 C7 D3 D7 E4 E5 E6 F10 F2 F3 F4 F6 G1 G10 G11 G12 G2 G4 G9 H1 H10 H11 H13 H6 H7 H8 H9 J10 J11 J12 J7 J9 K10 K12 K8 L10 L11 L7 L9 M7 M8 N8" aw="A6 A7 B7 B8 C11 C8 D10 D12 D8 E10 E13 E7 E9 F11 F12 F13 F5 F7 F9 G13 G3 G5 G6 G7 G8 H2 H3 H4 H5 J1 J2 J3 J4 J6 K2 K3 K5 K6 K7 L3 L4 L6 M6 N6 N7"
+Dia. 14
+
+There are three dead white stones and three dead black ones. These stones have no chance to make two eyes, so they are removed from the board. White removes the three black stones in the upper left in Dia. 13 and places them in Black’s territory in the upper right in Dia. 14 (the three marked black stones). For his part, Black removes the three white stones in the lower left in Dia. 13 and places them in White’s territory in the lower right in Dia. 14 (the three marked white stones). The territory is now counted.
+
+Black has 20 points in the lower left and 19 points in the upper right for a total of 39 points.
+
+White has 16 points in the lower right and 22 points in the upper left for a total of 38 points.
+
+Black wins by one point.
+
+This is all you need to know to start playing go.
+
+::h2
+Living Groups
+
+Are there stones that are completely surrounded but still alive? If you understand the rule about suicide, you should be able to answer this question.
+
+::dia(#ch4_dia20) sz=13 vw=A1N13 base=none at=1 ab="A11 A13 B11 B12 C12 C13 D3 D4 E3 E5 F3 F4 F5 G3 G5 H4 H5 M5 M6 M7 M8 M9 N5 N7 N9"
+Dia. 1
+
+In Dia. 1, there are three black groups which can never be captured. In the group at the bottom, White can never play on the points A or B because he would be committing suicide. Therefore, even if all the outside liberties remain, Black can never be captured. For the same reason, the black group in the upper left corner and the one on the right side are also immune from capture.
+
+The points A and B are called eyes. If a group has eyes in at least two separated places, the group is said to be ‘alive’. It doesn’t matter where these eyes are: in the center, on the edge, or in the corner.
+
+::dia(#ch4_dia21) sz=13 vw=A1N13 base=none at=1 ab="A4 A7 B4 B5 B6 B7 M5 M6 M7 M8 M9 N5 N7 N9" aw="A3 A8 B3 B8 C3 C4 C5 C6 C7 C8 L10 L4 L5 L6 L7 L8 L9 M10 M4 N10 N4"
+Dia. 2
+
+As we explained, it is impossible for the black group on the right in Dia. 2 to be captured, even though it is completely surrounded. But the black group on the left is dead; that is, White can capture it by playing 1 in Dia. 3.
+
+::dia(#ch4_dia22) sz=13 vw=A1N13 base=none at=1 mv=A7B7B6B5A4B4A6A5 ab="A4 A5 A7 B4 B5 B6 B7 M5 M6 M7 M8 M9 N5 N7 N9" aw="A3 A6 A8 B3 B8 C3 C4 C5 C6 C7 C8 L10 L4 L5 L6 L7 L8 L9 M10 M4 N10 N4"
+Dia. 33 at 1
+
+If Black captures at 2, he is left with one liberty. White plays back in at 1 and captures the black stones. You might have thought that Black had two eyes, but this is just a two-point eye space and not two separated eyes.
+
+::h3
+False Eyes
+
+::dia(#ch4_dia23) sz=13 vw=A1N13 base=none at=1 ab="D13 E11 E12 F10 F12 F13 G10 G11 G12 H13 L3 L4 M1 M2 M4 N3" aw="B12 D11 D12 E10 E9 F9 G9 H10 H12 J10 J12 K2 K3 K4 K5 L2 L6 M6 N4 N5"
+Dia. 4
+
+The black stones at the bottom in Dia. 4 are dead since they have only one real eye. They certainly have a two-point eye space in the corner, which is certainly a real eye, but the eye at A, even though it looks like an eye, is a ‘false eye’. If White fills the two liberties of the three-stone group surrounding the point A, Black will be in atari and will have to defend by connecting at A. Black’s only eye is the two-point eye space in the corner.
+
+In the group at the top, the points A and B on the edge are also false eyes. Black can be forced to play on these points, so his group will be left with only one eye and is dead.
+
+::h3
+Seki
+
+::dia(#ch4_dia24) sz=13 vw=A1N13 base=none at=1 ab="E11 E12 E13 F11 G10 H10 H11 H12 H13 J10 J12 K11 K12 K13" aw="A12 B12 B13 C12 D10 D11 D12 D13 E10 F10 G11 G12 G13"
+Dia. 5
+
+Look at the position in Dia. 5. The group of four black stones and the group of three white stones in the middle do not have eyes. However, both groups are alive since neither side can atari the other.
+
+::dia(#ch4_dia25) sz=13 vw=A1N13 base=none at=1 mv=G13G12G11F12F13 ab="E11 E12 E13 F11 F13 G10 H10 H11 H12 H13 J10 J12 K11 K12 K13" aw="A12 B12 B13 C12 D10 D11 D12 D13 E10 F10 F12 G11 G12 G13"
+Dia. 6
+
+For example, if White attacks the black stones by playing at 1 in Dia. 6, he puts himself into atari and Black will capture four white stones with 2. On the other hand, if Black plays at 1, White will capture five black stones by playing at 2. As you can see, neither side can play here without suffering a loss, so the stones remain on the board at the end of the game. This kind of a position is called a seki.
+
+A necessary condition for a seki to exist is that all the stones surrounding the stones in a seki are alive.
+
+The two points between the groups in seki do not count as territory.
+
+::dia(#ch4_dia26) sz=13 vw=A1N13 base=none at=1 ab="C11 C12 C13 D11 E11 E12 E13 F11 G10 H10 H11 J11 K11 K12 K13" aw="B11 B12 B13 C10 D10 D12 E10 F10 F12 G11 G12 G13 H12 J12 J13"
+Dia. 7
+
+In the seki in Dia. 7, each of the black and white groups have an eye, but there is a white stone inside Black’s eye. At the end of the game, before Black passes, he will capture this stone, thereby gaining a point. However, the eye in each of the groups in the seki are not counted as territory.
+
+::h3
+Nakade
+
+It often happens that when a group of your stones is surrounded and has an eye space, your opponent will place a stone inside that eye space, and reduce it to one eye. This kind of move is called nakade.
+
+::dia(#ch4_dia27) sz=13 vw=A1N13 base=none at=1 ab="A11 B11 B12 C12 C13 E4 E5 E6 E7 F4 F8 G4 G5 G6 G7 G8 M10 M6 M7 M8 M9 N10 N6" aw="A10 B10 C10 D10 D11 D12 D13 D3 D4 D5 D6 D7 D8 E3 E8 F3 F9 G3 G9 H4 H5 H6 H7 H8 H9 L10 L11 L5 L6 L7 L8 L9 M11 M5 N11 N5"
+Dia. 8
+
+The three positions in Dia. 8 are examples of the three-point eye spaces: in the corner, in the center, and on the side. White can kill each of these groups by playing on the point A. These moves are examples of nakade. On the other hand, Black can make two eyes and live in each of the three positions by playing at A.
+
+There are many varieties of eye spaces. They come in all sizes and shapes. Many of them can be reduced to one eye with nakade moves, others can not. You will find many examples in the problem section.
+
+::h3
+Handicaps
+
+When there is a difference in strength between two players, the weaker player will take a handicap and place stones on specified points to compensate for the difference. Handicaps range from nine stones to two stones.
+
+::dia(#ch4_dia28) sz=19 vw=A1T19 base=none at=1 ab="D10 D16 D4 K10 K16 K4 Q10 Q16 Q4"
+Dia. 9
+
+Dia. 9 shows the order of placement for a nine-stone handicap. In an eight-stone handicap, Black doesn’t put the stone at 9 on the board. For a seven-stone handicap, Black 7 is placed on the central point. Finally, for a six-stone handicap, Black only places the stones from 1 to 6.
+
+::dia(#ch4_dia29) sz=19 vw=A1T19 base=none at=1 ab="D16 D4 K10 Q16 Q4"
+Dia. 10
+
+The placements for five- to two-stone handicaps are shown in Dia. 10.
+
+::h3
+Komi
+
+Since Black moves first, he has the advantage. In order to make a game an even contest, Black concedes to White a number of points of territory before the start of the game. When the score is counted, these points are subtracted from Black’s score. This compensation is called komi. The usual komi given to White by Black is 6½ points. Although half points do not arise in actual play, it is a device used in tournament games to ensure that draws do not occur.
+
+::h3
+Other Books to Continue Your Study of Go
+
+This has been a brief introduction to go. It is recommended that you study a more complete presentation of the rules. The book we recommend is Go: A Complete Introduction to the Game, by Cho Chikun, which is available from Kiseido Publishing Company in printed form and in SmartGo Books on the iPad. See Go Books from Kiseido for a partial listing of go books and magazine published by Kiseido.
+
+
+::chapter(#ch5)
+
+::h2
+Glossary of Japanese Go Terms
+
+atari — A move that leaves an opposing stone or group with only one liberty, threatening to capture on the next move.
+
+dame — Neutral points which profit neither Black nor White.
+
+dan — A ranking scale running from shodan (1-dan) up to 9-dan. For amateurs, there is a one-stone difference between ranks. For professionals, the difference is usually a third of a stone. At present, the top amateur rank in Japan is 8-dan, which is considered comparable to professional shodan.
+
+double atari — an atari that threatens to capture two different groups of stones.
+
+eye — A point which is surrounded by stones of the same color.
+
+ko — A shape in which your stone is captured, but it is illegal to retake the capturing stone even though you can occupy all of its liberties.
+
+kyu — A rank given to players to indicate their strength. Beginners are arbitrarily classified at 35-kyu and as they become stronger, the numerical value of their kyu decreases. For example, 15-kyu is stronger than 20-kyu. See dan.
+
+oiotoshi — A move which gives atari to a group of stones in such a way that no matter how one defends, the group will still be in atari.
+
+seki — A stalemate between opposing groups. If one side tries to attack the other side’s group, his own group will find itself in atari and be captured. Therefore, neither side can attack or atari the other.
+
+snapback — A tactic in which one stone is offered as a sacrifice. If it is taken, the capturing stones are in turn captured.
+
+For a complete glossary of Japanese go terms, see The Go Player’s Almanac, published by Kiseido.
+
+
+::chapter(#ch6)
+
+::h2
+Introductory Problems Level One
+
+
+::chapter(#ch6_1)
+
+::h3
+How to Capture Stones
+
+::h2
+Problem 1
+
+::dia(#ch6_1_dia0) sz=13 vw=A1N13 base=none at=1 mv=G5N13G4 ab="F5 G4 G6 H5 N13" aw="G5 H6 J6"
+Problem 1Black to play
+
+How does Black play to capture a white stone?
+
+::h3
+Answer 1
+
+::dia(#ch6_1_dia1) sz=13 vw=A1N13 base=none at=1 mv=G6 ab="F7 G6 G8 H7" aw="G7 H8 J8"
+Correct Answer
+
+By playing at 1, Black can capture one white stone.
+
+::dia(#ch6_1_dia2) sz=13 vw=E1N9 base=none at=1 mv=J3G2 ab="F3 G4 H3 J3" aw="G2 G3 H4 J4"
+Wrong Answer
+
+If Black plays 1, White can escape by playing 2.
+
+::h2
+Problem 2
+
+::dia(#ch6_1_dia3) sz=13 vw=A1N13 base=none at=1 mv=G1N13H1 ab="F1 G1 H1 N13" aw="G1 H1"
+Problem 2Black to play
+
+How does Black play to capture a white stone?
+
+::h3
+Answer 2
+
+::dia(#ch6_1_dia4) sz=13 vw=A1N13 base=none at=1 mv=H1 ab="F1 G2 G3 H1" aw="G1 H2 H3"
+Correct Answer
+
+By playing 1, Black can capture one stone.
+
+::dia(#ch6_1_dia5) sz=13 vw=A6N13 base=none at=1 mv=F7H6 ab="F6 F7 G7 G8" aw="G6 H6 H7 H8"
+Wrong Answer
+
+If Black plays 1, White can save his stone by playing 2.
+
+::h2
+Problem 3
+
+::dia(#ch6_1_dia6) sz=13 vw=A1N13 base=none at=1 mv=N1N13N1 ab="H1 K1 L1 M1 N1 N13" aw="L1 M1 M2 N1"
+Problem 3Black to play
+
+How does Black play to capture a white stone?
+
+::h3
+Answer 3
+
+::dia(#ch6_1_dia7) sz=13 vw=A1N13 base=none at=1 mv=N2 ab="H3 K2 L2 M1 N2" aw="L3 M2 M4 N1"
+Correct Answer
+
+White captures the corner stone with 1.
+
+::dia(#ch6_1_dia8) sz=13 vw=A6H13 base=none at=1 mv=F6H7 ab="C8 E7 F6 F7 G6" aw="F8 G7 G9 H6 H7"
+Wrong Answer
+
+If Black plays 1, White can save his stone by playing 2.
+
+::h2
+Problem 4
+
+::dia(#ch6_1_dia9) sz=13 vw=A1N13 base=none at=1 mv=F8F7N13F9 ab="E7 E8 F6 F9 G7 G8 N13" aw="D7 E5 E6 F7 F8"
+Problem 4Black to play
+
+How can Black capture two white stones?
+
+::h3
+Answer 4
+
+::dia(#ch6_1_dia10) sz=13 vw=A1N13 base=none at=1 mv=F11 ab="E10 E9 F11 F8 G10 G9" aw="D9 E7 E8 F10 F9"
+Correct Answer
+
+By playing 1, Black can capture two white stones.
+
+::dia(#ch6_1_dia11) sz=13 vw=E1N9 base=none at=1 mv=K3K7 ab="J5 J6 K3 K4 L5 L6" aw="H5 J3 J4 K5 K6 K7"
+Wrong Answer
+
+If Black plays a move like 1, White can save his stones by extending to 2.
+
+::h2
+Problem 5
+
+::dia(#ch6_1_dia12) sz=13 vw=A1N13 base=none at=1 mv=E1F1N13G1 ab="D1 E1 F1 F2 G1 N13" aw="D1 E1 F1 G1 H1 J1 K2"
+Problem 5Black to play
+
+How can Black capture two white stones?
+
+::h3
+Answer 5
+
+::dia(#ch6_1_dia13) sz=13 vw=A1N13 base=none at=1 mv=G1 ab="D1 E2 F2 F4 G1" aw="D2 E1 F1 G2 H2 J1 K4"
+Correct Answer
+
+By playing 1, Black can capture two white stones.
+
+::dia(#ch6_1_dia14) sz=13 vw=A6N13 base=none at=1 mv=C6G6 ab="C6 D6 E7 F7 F9" aw="D7 E6 F6 G6 G7 H7 J6 K9"
+Wrong Answer
+
+If Black plays 1, White saves his two stones by connecting with 2.
+
+::h2
+Problem 6
+
+::dia(#ch6_1_dia15) sz=13 vw=A1N13 base=none at=1 mv=H1H1N13G1 ab="F1 G1 H1 J1 N13" aw="E1 F1 G1 H1"
+Problem 6Black to play
+
+How can Black capture two white stones?
+
+::h3
+Answer 6
+
+::dia(#ch6_1_dia16) sz=13 vw=A1N13 base=none at=1 mv=G1 ab="F2 G1 G2 H3 J1 J2" aw="E2 F1 F3 G3 H1 H2"
+Correct Answer
+
+By playing 1, Black can capture two white stones.
+
+::dia(#ch6_1_dia17) sz=13 vw=A6N13 base=none at=1 mv=G6 ab="F7 G7 H8 J6 J7" aw="E7 F6 F8 G6 G8 H6 H7"
+If White Plays First
+
+If it’s White’s turn to play, he will capture two stones with 1.
+
+::h2
+Problem 7
+
+::dia(#ch6_1_dia18) sz=13 vw=A1N13 base=none at=1 mv=F6F5N13E6 ab="D6 E5 E6 E7 F4 F7 G5 G6 N13" aw="D7 D8 E8 F5 F6 F8 G7"
+Problem 7Black to play
+
+How can Black capture two white stones?
+
+::h3
+Answer 7
+
+::dia(#ch6_1_dia19) sz=13 vw=A1N13 base=none at=1 mv=E8 ab="D8 E7 E8 E9 F6 F9 G7 G8" aw="D10 D9 E10 F10 F7 F8 G9"
+Correct Answer
+
+By playing 1, Black can capture two white stones.
+
+::dia(#ch6_1_dia20) sz=13 vw=A5H13 base=none at=1 mv=E8 ab="D8 E7 E9 F6 F9 G7 G8" aw="D10 D9 E10 E8 F10 F7 F8 G9"
+If White Plays First
+
+If it’s White’s turn, it is White who will capture two stones.
+
+::h2
+Problem 8
+
+::dia(#ch6_1_dia21) sz=13 vw=A1N13 base=none at=1 mv=F7E6N13F6 ab="D6 E5 E7 F6 F8 G7 N13" aw="E6 F4 F5 F7 G8"
+Problem 8Black to play
+
+How can Black capture some white stones?
+
+::h3
+Answer 8
+
+::dia(#ch6_1_dia22) sz=13 vw=A1N13 base=none at=1 mv=F8 ab="D8 E7 E9 F10 F8 G9" aw="E8 F6 F7 F9 G10"
+Correct Answer
+
+By playing 1, Black captures two white stones at the same time.
+
+::dia(#ch6_1_dia23) sz=13 vw=A1N13 base=none at=1 ab="D8 E7 E9 F10 F8 G9" aw="F6 F7 G10"
+The Resulting Shape
+
+This is what the position will look like after the capture.
+
+::h2
+Problem 9
+
+::dia(#ch6_1_dia24) sz=13 vw=A1N13 base=none at=1 mv=E7F7G7N13E6 ab="D7 E6 E8 F6 F8 G6 G8 H7 N13" aw="D6 E5 E7 F7 G7 H8 J8"
+Problem 9Black to play
+
+How can Black capture three white stones?
+
+::h3
+Answer 9
+
+::dia(#ch6_1_dia25) sz=13 vw=A1N13 base=none at=1 mv=E8 ab="D9 E10 E8 F10 F8 G10 G8 H9" aw="D8 E7 E9 F9 G9 H10 J10"
+Correct Answer
+
+Black can capture three stones by playing 1.
+
+::dia(#ch6_1_dia26) sz=13 vw=A5N13 base=none at=1 mv=E8 ab="D9 E10 F10 F8 G10 G8 H9" aw="D8 E7 E8 E9 F9 G9 H10 J10"
+If White Plays First
+
+If it’s White’s turn, he can save his three stones by playing 1.
+
+::h2
+Problem 10
+
+::dia(#ch6_1_dia27) sz=13 vw=A1N13 base=none at=1 mv=G4G3H3N13G5 ab="F3 F4 G2 G5 H2 H4 J3 J4 N13" aw="F5 G3 G4 G6 H3 H5 J2 K2"
+Problem 10Black to play
+
+How can Black capture some white stones?
+
+::h3
+Answer 10
+
+::dia(#ch6_1_dia28) sz=13 vw=A1N13 base=none at=1 mv=G7 ab="F5 F6 G4 G7 H4 H6 J5 J6" aw="F7 G5 G6 G8 H5 H7 J4 K4"
+Correct Answer
+
+Black can capture three stones by playing 1.
+
+::dia(#ch6_1_dia29) sz=13 vw=A1N13 base=none at=1 mv=G7 ab="F5 F6 G4 H4 H6 J5 J6" aw="F7 G5 G6 G7 G8 H5 H7 J4 K4"
+If White Plays First
+
+If it’s White’s turn, he can save his three stones by playing 1.
+
+::h2
+Problem 11
+
+::dia(#ch6_1_dia30) sz=13 vw=A1N13 base=none at=1 mv=G2G1G1N13G1 ab="E1 F1 F2 G1 G3 H1 H2 N13" aw="D1 E1 E3 F1 F3 G1 G2"
+Problem 11Black to play
+
+How can Black capture some white stones?
+
+::h3
+Answer 11
+
+::dia(#ch6_1_dia31) sz=13 vw=A1N13 base=none at=1 mv=G1 ab="E3 F2 F3 F4 G1 G5 H2 H3 H4" aw="D3 E2 E5 F1 F5 G2 G3 G4"
+Correct Answer
+
+Black can capture three stones by playing 1.
+
+::dia(#ch6_1_dia32) sz=13 vw=E1N9 base=none at=1 mv=K5J4K4K3H3J5 ab="H3 J4 K3 K4 K5 L6 M3 M4 M5" aw="H4 J3 J5 J6 K2 K6 L3 L4 L5"
+Wrong Answer
+
+If Black plays 1, it is White who captures four black stones with 2.
+
+::h2
+Problem 12
+
+::dia(#ch6_1_dia33) sz=13 vw=A1N13 base=none at=1 mv=E1N13D1 ab="D1 E1 E2 E4 F1 N13" aw="D1 E1 F1 H1"
+Problem 12Black to play
+
+How can Black capture one white stone?
+
+::h3
+Answer 12
+
+::dia(#ch6_1_dia34) sz=13 vw=A1N13 base=none at=1 mv=D1 ab="D1 E2 E3 E4 E6 F1" aw="D2 D3 E1 F2 F3 H3"
+Correct Answer
+
+Black can capture one stone by playing 1.
+
+::dia(#ch6_1_dia35) sz=13 vw=E1N9 base=none at=1 mv=L2H2 ab="J3 J4 J5 J7 K2 L2" aw="H2 H3 H4 J2 K3 K4 M4"
+Wrong Answer
+
+If Black plays 1, White connects with 2 and White cannot be captured.
+
+::h2
+Problem 13
+
+::dia(#ch6_1_dia36) sz=13 vw=A1N13 base=none at=1 mv=F5G5G4G3H3N13E5 ab="E5 F3 F4 F6 G2 G6 H2 H4 H5 J3 N13" aw="D5 E4 E6 F2 F5 G3 G4 G5 H3"
+Problem 13Black to play
+
+How can Black capture some white stones?
+
+::h3
+Answer 13
+
+::dia(#ch6_1_dia37) sz=13 vw=A1N13 base=none at=1 mv=E7 ab="E7 F5 F6 F8 G4 G8 H4 H6 H7 J5" aw="D7 E6 E8 F4 F7 G5 G6 G7 H5"
+Correct Answer
+
+Black can capture five stones by playing 1.
+
+::dia(#ch6_1_dia38) sz=13 vw=A5N13 base=none at=1 mv=E9E11 ab="E9 F10 F12 F9 G12 G8 H10 H11 H8 J9" aw="D11 E10 E11 E12 F11 F8 G10 G11 G9 H9"
+Wrong Answer
+
+If Black plays 1, White plays 2 and his stones are saved.
+
+::h2
+Problem 14
+
+::dia(#ch6_1_dia39) sz=13 vw=A1N13 base=none at=1 mv=F10G10F9F8F7N13F11 ab="E10 E4 E5 E7 E8 E9 F11 F6 G11 G7 G8 G9 H10 H6 N13" aw="D10 D5 D6 D7 D8 D9 E6 F10 F5 F7 F8 F9 G10"
+Problem 14Black to play
+
+How can Black capture some white stones?
+
+::h3
+Answer 14
+
+::dia(#ch6_1_dia40) sz=13 vw=A1N13 base=none at=1 mv=F13 ab="E10 E11 E12 E6 E7 E9 F13 F8 G10 G11 G13 G9 H12 H8" aw="D10 D11 D12 D7 D8 D9 E8 F10 F11 F12 F7 F9 G12"
+Correct Answer
+
+Black can capture five stones by playing 1.
+
+::dia(#ch6_1_dia41) sz=13 vw=E1N9 base=none at=1 mv=J8J7J6J5L4J9 ab="J2 J3 J5 J6 J7 J8 K4 L4 L5 L6 L7 L9 M4 M8" aw="H3 H4 H5 H6 H7 H8 J4 J9 K3 K5 K6 K7 K8 L8"
+Wrong Answer
+
+If Black plays 1, it is White who captures four black stones with 2.
+
+
+::chapter(#ch6_2)
+
+::h3
+How to Save Endangered Stones
+
+::h2
+Problem 15
+
+::dia(#ch6_2_dia0) sz=13 vw=A1N13 base=none at=1 mv=N13K3 ab="K2 K3 K4 L3 N13" aw="J4 K5 L4"
+Problem 15Black to play
+
+How can Black save his endangered stone?
+
+::h3
+Answer 15
+
+::dia(#ch6_2_dia1) sz=13 vw=A1N13 base=none at=1 mv=K5 ab="K4 K5 K6 L5" aw="J6 K7 L6"
+Correct Answer
+
+Black can save his stone by connecting with 1.
+
+::dia(#ch6_2_dia2) sz=13 vw=A5H13 base=none at=1 mv=E10G10E9 ab="E10 E8 F9 G10" aw="D10 E11 E9 F10"
+Wrong Answer
+
+If Black threatens to capture a white stone by playing at 1, White captures a black stone with 2.
+
+::h2
+Problem 16
+
+::dia(#ch6_2_dia3) sz=13 vw=A1N13 base=none at=1 mv=N13E8 ab="D8 E7 E8 E9 F5 N13" aw="C8 D6 D7 D9"
+Problem 16Black to play
+
+One black stone is about to be captured. How can Black save it?
+
+::h3
+Answer 16
+
+::dia(#ch6_2_dia4) sz=13 vw=A1N13 base=none at=1 mv=E10 ab="D10 E10 E11 E9 F7" aw="C10 D11 D8 D9"
+Correct Answer
+
+Black can save his stone by connecting with 1.
+
+::dia(#ch6_2_dia5) sz=13 vw=A6H13 base=none at=1 mv=D10C11E10 ab="C11 D10 E11 E9 F7" aw="C10 D11 D8 D9 E10"
+Wrong Answer
+
+If Black threatens to capture a white stone by playing 1, White captures a black stone with 2.
+
+::h2
+Problem 17
+
+::dia(#ch6_2_dia6) sz=13 vw=A1N13 base=none at=1 mv=N13L5 ab="H5 K5 L4 L5 L6 M6 N13" aw="K6 L7 M5 M7 N6"
+Problem 17Black to play
+
+Two black stones are in danger. How can Black save them?
+
+::h3
+Answer 17
+
+::dia(#ch6_2_dia7) sz=13 vw=A1N13 base=none at=1 mv=L7 ab="H7 K7 L6 L7 L8 M8" aw="K8 L9 M7 M9 N8"
+Correct Answer
+
+Black can save his two stones by connecting at 1.
+
+::dia(#ch6_2_dia8) sz=13 vw=A1H13 base=none at=1 mv=F8G8D8F7 ab="C7 D8 E7 F6 F8 G8" aw="E8 F7 F9 G7 G9 H8"
+Wrong Answer
+
+If Black plays 1, White will capture two black stones with 2.
+
+The following sample problems are out of sequence to give you more of a flavor of the difficulty of the book.
+
+::h2
+Problem 25
+
+::dia(#ch6_2_dia9) sz=13 vw=A1N13 base=none at=1 mv=N13F7 ab="B8 C8 D7 D9 E9 F7 F9 G8 N13" aw="B9 C6 C7 C9 D8 E8 F6 F8"
+Problem 25Black to play
+
+How should Black atari the three white stones?
+
+::h3
+Answer 25
+
+::dia(#ch6_2_dia10) sz=13 vw=A1N13 base=none at=1 mv=F9 ab="B10 C10 D11 D9 E11 F11 F9 G10" aw="B11 C11 C8 C9 D10 E10 F10 F8"
+Correct Answer
+
+Black can capture three stones with an atari at 1.
+
+::dia(#ch6_2_dia11) sz=13 vw=A6H13 base=none at=1 mv=E9F9 ab="B10 C10 D11 D9 E11 E9 F11 G10" aw="B11 C11 C8 C9 D10 E10 F10 F8 F9"
+Wrong Answer
+
+If Black ataries with 1, White plays 2 and his stones cannot be captured.
+
+::h2
+Problem 60
+
+::dia(#ch6_2_dia12) sz=13 vw=A1N13 base=none at=1 mv=N13D7 ab="A8 A9 B6 B8 C2 C3 C4 C6 C7 D1 D2 D4 D5 D6 D7 E1 E11 F10 F11 F8 F9 G7 H7 J6 J7 J9 K6 L5 L6 L9 M6 M8 N13 N7" aw="A10 B9 C10 C8 C9 D11 D3 D9 E1 E10 E2 E3 E4 E5 E6 E7 E8 E9 F1 F7 G1 G6 H5 H6 J5 K2 K4 L1 L4 M4 M5 N5 N6"
+Problem 60Black to play
+
+Where is the last point of profit?
+
+::h3
+Answer 60
+
+::dia(#ch6_2_dia13) sz=13 vw=A1N13 base=none at=1 mv=D9 ab="A10 A11 B10 B8 C4 C5 C6 C8 C9 D1 D2 D3 D4 D6 D7 D8 D9 E13 E2 F10 F11 F12 F13 G9 H9 J11 J8 J9 K8 L11 L7 L8 M10 M8 N9" aw="A12 B11 C10 C11 C12 D11 D13 D5 E1 E10 E11 E12 E3 E4 E5 E6 E7 E8 E9 F1 F2 F9 G3 G8 H7 H8 J7 K4 K6 L3 L6 M6 M7 N7 N8"
+Correct Answer
+
+Black 1 is the last point of profit left.
+
+::dia(#ch6_2_dia14) sz=13 vw=A1N13 base=none at=1 mv=K7D9 ab="A10 A11 B10 B8 C4 C5 C6 C8 C9 D1 D2 D3 D4 D6 D7 D8 E13 E2 F10 F11 F12 F13 G9 H9 J11 J8 J9 K7 K8 L11 L7 L8 M10 M8 N9" aw="A12 B11 C10 C11 C12 D11 D13 D5 D9 E1 E10 E11 E12 E3 E4 E5 E6 E7 E8 E9 F1 F2 F9 G3 G8 H7 H8 J7 K4 K6 L3 L6 M6 M7 N7 N8"
+Wrong Answer
+
+Black 1 is on a neutral point. White 2 takes the last profitable point. Black has lost a point.
+
+::h2
+Problem 72
+
+::dia(#ch6_2_dia15) sz=13 vw=A1N13 base=none at=1 mv=N13G4 ab="F2 F4 F5 G1 G2 G3 G4 G6 H4 H6 J4 J6 K5 L5 N13" aw="E2 E3 F1 F3 G1 H1 H2 H3 H5 J3 J5 K4"
+Problem 72Black to play
+
+How should Black answer White 1?
+
+::h3
+Answer 72
+
+::dia(#ch6_2_dia16) sz=13 vw=A1N13 base=none at=1 mv=G6 ab="F4 F6 F7 G3 G4 G5 G6 G8 H6 H8 J6 J8 K7 L7" aw="E4 E5 F3 F5 G2 H3 H4 H5 H7 J5 J7 K6"
+Correct Answer
+
+Black should play 1, connecting his four stones in atari to the ones above.
+
+::dia(#ch6_2_dia17) sz=13 vw=A1N13 base=none at=1 mv=H7J7G5F4G4G3G7G6 ab="F4 F6 F7 G3 G4 G5 G7 G8 H6 H8 J6 J8 K7 L7" aw="E4 E5 F3 F5 G2 G6 H3 H4 H5 H7 J5 J7 K6"
+Wrong Answer
+
+If Black captures two stones with 1, White captures four stones with 2.
+
+::h2
+Problem 136
+
+::dia(#ch6_2_dia18) sz=13 vw=A1N13 base=none at=1 mv=N13F4 ab="D4 D5 D6 E3 E7 F3 F7 G2 G5 G7 H2 H6 J2 J6 K3 K4 K5" aw="E5 F4 F6 G3 G4 G6 H3 H5 J4 J5 N13"
+Problem 136White to play
+
+Where does White play to live?
+
+::h3
+Answer 136
+
+::dia(#ch6_2_dia19) sz=13 vw=A1N13 base=none at=1 mv=F6 ab="D6 D7 D8 E5 E9 F5 F9 G4 G7 G9 H4 H8 J4 J8 K5 K6 K7" aw="E7 F6 F8 G5 G6 G8 H5 H7 J6 J7"
+Correct Answer
+
+White 1 is the vital point. White has two distinct eyes and cannot be killed.
+
+::dia(#ch6_2_dia20) sz=13 vw=A1N13 base=none at=1 mv=G7F7F6 ab="D6 D7 D8 E5 E9 F5 F6 F9 G4 G7 G9 H4 H8 J4 J8 K5 K6 K7" aw="E7 F7 F8 G5 G6 G8 H5 H7 J6 J7"
+Wrong Answer
+
+If White captures a stone with 1, Black 2 leaves White with only one real eye, so he is dead.
+
+::h2
+Problem 207
+
+::dia(#ch6_2_dia21) sz=13 vw=C1N11 base=none at=1 mv=N11J9N11H9F9 ab="F8 F9 G8 H7 J7 J9 K7 K8 N11" aw="E7 F7 G7 G9 H8 H9 J8 K9 L7 L8 N11"
+Problem 207Black to play
+
+Capture three white stones with the connect-and-capture technique.
+
+::h3
+Answer 207
+
+::dia(#ch6_2_dia22) sz=13 vw=C1N11 base=none at=1 mv=J11H11F11 ab="F10 F11 G10 H9 J11 J9 K10 K9" aw="E9 F9 G11 G9 H10 H11 J10 K11 L10 L9"
+Correct Answer
+
+Black sacrifices a stone with 1, then plays 3. White can’t connect, so he has lost four stones.
+
+::dia(#ch6_2_dia23) sz=13 vw=C1N11 base=none at=1 mv=F11J11 ab="F10 F11 G10 H9 J9 K10 K9" aw="E9 F9 G11 G9 H10 J10 J11 K11 L10 L9"
+Wrong Answer
+
+If Black plays 1 first, he fails. White connects with 2 and his stones are safe.
+
