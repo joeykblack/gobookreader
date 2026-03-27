@@ -265,7 +265,7 @@ done
 
 ## Format Reference
 
-For detailed GoBook format specification, see [docs/gobookformat.md](gobookformat.md).
+For detailed GoBook format specification, see [info/gobookformat.md](gobookformat.md).
 
 ## Future Improvements
 

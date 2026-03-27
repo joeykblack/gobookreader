@@ -76,7 +76,7 @@ gobookreader/
 │   ├── lib/           # Go libraries and utilities
 │   ├── App.jsx        # Main application component
 │   └── main.jsx       # Entry point
-├── docs/              # Documentation
+├── info/              # Documentation
 ├── scripts/           # Conversion and utility scripts
 ├── ebooks/            # Sample EPUB files
 ├── gobooks/           # Sample gobook files
@@ -102,8 +102,8 @@ gobookreader/
 
 ## Related Projects
 
-- [GoBook Format Specification](docs/gobookformat.md)
-- [EPUB to GoBook Converter](docs/EPUB_TO_GOBOOK_CONVERTER.md)
+- [GoBook Format Specification](info/gobookformat.md)
+- [EPUB to GoBook Converter](info/EPUB_TO_GOBOOK_CONVERTER.md)
 
 ## License
 
@@ -111,4 +111,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Roadmap
 
-See [docs/plan.md](docs/plan.md) for detailed development roadmap and feature planning.
+See [info/plan.md](info/plan.md) for detailed development roadmap and feature planning.

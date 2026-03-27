@@ -21,7 +21,7 @@ Welcome to the GoBook Reader documentation. This index provides links to all doc
 
 ## File Structure
 ```
-docs/
+info/
 ├── architecture.md      # System architecture overview
 ├── development.md       # Developer guide
 ├── gobookformat.md      # GoBook format specification
