@@ -1,5 +1,7 @@
 # GoBook Reader
 
+**[View Live Site](https://joeykblack.github.io/gobookreader/)**
+
 A web-based Go book reader that works across multiple platforms, designed to read and display Go books in the gobook format. This project aims to provide an interactive, client-side experience for studying Go.
 
 ## Purpose
