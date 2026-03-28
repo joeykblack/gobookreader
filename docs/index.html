@@ -5,8 +5,21 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GoBook Reader</title>
-    <script type="module" crossorigin src="/assets/index-BZ8FX93w.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DoVELce4.css">
+    <style>
+      html.night-mode, html.night-mode body {
+        background-color: #000 !important;
+        color: #fff !important;
+      }
+    </style>
+    <script>
+      (function() {
+        if (localStorage.getItem('gobookNightMode') === 'true') {
+          document.documentElement.classList.add('night-mode');
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-C-4c2hn1.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-TfL7Er6W.css">
   </head>
   <body>
     <div id="root"></div>

@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import JSZip from 'jszip'
+import { Goban } from '@sabaki/shudan'
+import '@sabaki/shudan/css/goban.css'
 import './App.css'
 
 function App() {
   const [bookData, setBookData] = useState(null)
+  const [mounted, setMounted] = useState(false)
   const [nightMode, setNightMode] = useState(() => {
     const savedNightMode = localStorage.getItem('gobookNightMode')
     return savedNightMode === null ? false : savedNightMode === 'true'
@@ -18,14 +21,18 @@ function App() {
     }
   }, [])
 
+  useEffect(() => { setMounted(true) }, [])
+
   useEffect(() => {
     localStorage.setItem('gobookNightMode', nightMode)
   }, [nightMode])
 
-  useEffect(() => {
-    document.documentElement.style.backgroundColor = nightMode ? '#000' : '#fff'
-    document.body.style.backgroundColor = nightMode ? '#000' : '#fff'
-    document.body.style.color = nightMode ? '#fff' : '#222'
+  useLayoutEffect(() => {
+    document.documentElement.classList.toggle('night-mode', nightMode)
+    document.documentElement.style.removeProperty('background-color')
+    document.documentElement.style.removeProperty('color')
+    document.body.style.removeProperty('background-color')
+    document.body.style.removeProperty('color')
   }, [nightMode])
 
   const parseGobook = (content) => {
@@ -48,6 +55,13 @@ function App() {
       } else if (line.startsWith('::chapter(')) {
         currentChapter = { id: line, title: '', content: [] }
         bookInfo.chapters.push(currentChapter)
+        i++
+      } else if (line.startsWith('::dia(')) {
+        const szMatch = line.match(/\bsz=(\d+)/)
+        const size = szMatch ? Number(szMatch[1]) : 19
+        if (currentChapter) {
+          currentChapter.content.push({ type: 'diagram', size: Number.isNaN(size) ? 19 : size })
+        }
         i++
       } else if (line.startsWith('::h1') || line.startsWith('::h2') || line.startsWith('::h3')) {
         const level = Number(line.charAt(3)) || 1
@@ -135,6 +149,11 @@ function App() {
 
   const contentWidth = 'min(800px, calc(100% - 40px))'
 
+  const createEmptySignMap = (size) => {
+    const boardSize = Number.isInteger(size) && size > 0 ? size : 19
+    return Array.from({ length: boardSize }, () => Array.from({ length: boardSize }, () => 0))
+  }
+
   return (
     <div
       className="App"
@@ -143,7 +162,7 @@ function App() {
         color: nightMode ? '#fff' : '#222',
         minHeight: '100vh',
         width: '100%',
-        transition: 'background 0.2s, color 0.2s',
+        transition: mounted ? 'background 0.2s, color 0.2s' : 'none',
       }}
     >
       <header
@@ -151,7 +170,7 @@ function App() {
         style={{
           background: nightMode ? '#000' : undefined,
           color: nightMode ? '#fff' : undefined,
-          transition: 'background 0.2s, color 0.2s',
+          transition: mounted ? 'background 0.2s, color 0.2s' : 'none',
         }}
       >
         <div style={{ width: contentWidth, margin: '0 auto' }}>
@@ -196,7 +215,7 @@ function App() {
           margin: '0 auto',
           background: nightMode ? '#000' : undefined,
           color: nightMode ? '#fff' : undefined,
-          transition: 'background 0.2s, color 0.2s',
+          transition: mounted ? 'background 0.2s, color 0.2s' : 'none',
         }}
       >
         {bookData ? (
@@ -222,6 +241,16 @@ function App() {
                         style={{ lineHeight: '1.6', marginBottom: '1em', whiteSpace: 'pre-wrap', color: nightMode ? '#fff' : undefined }}
                         dangerouslySetInnerHTML={{ __html: formatInlineText(item.text) }}
                       />
+                    )
+                  } else if (item.type === 'diagram') {
+                    return (
+                      <div key={itemIndex} style={{ margin: '1em 0', display: 'flex', justifyContent: 'center' }}>
+                        <Goban
+                          signMap={createEmptySignMap(item.size)}
+                          showCoordinates={true}
+                          vertexSize={24}
+                        />
+                      </div>
                     )
                   }
                   return null
