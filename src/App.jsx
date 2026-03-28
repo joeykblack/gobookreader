@@ -1,8 +1,72 @@
-import { useState, useEffect, useLayoutEffect } from 'react'
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import JSZip from 'jszip'
 import { Goban } from '@sabaki/shudan'
 import '@sabaki/shudan/css/goban.css'
 import './App.css'
+
+const createEmptySignMap = (size) => {
+  const boardSize = Number.isInteger(size) && size > 0 ? size : 19
+  return Array.from({ length: boardSize }, () => Array.from({ length: boardSize }, () => 0))
+}
+
+function LazyDiagram({ size, nightMode }) {
+  const containerRef = useRef(null)
+  const [hasBeenVisible, setHasBeenVisible] = useState(false)
+
+  const boardSize = Number.isInteger(size) && size > 0 ? size : 19
+
+  useEffect(() => {
+    if (!containerRef.current || hasBeenVisible) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setHasBeenVisible(true)
+          observer.disconnect()
+        }
+      },
+      { rootMargin: '300px 0px' }
+    )
+
+    observer.observe(containerRef.current)
+
+    return () => observer.disconnect()
+  }, [hasBeenVisible])
+
+  const signMap = useMemo(() => createEmptySignMap(boardSize), [boardSize])
+  const placeholderHeight = Math.max(220, boardSize * 22)
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        margin: '1em 0',
+        display: 'flex',
+        justifyContent: 'center',
+        minHeight: `${placeholderHeight}px`,
+      }}
+    >
+      {hasBeenVisible ? (
+        <Goban
+          signMap={signMap}
+          showCoordinates={true}
+          vertexSize={24}
+        />
+      ) : (
+        <div
+          style={{
+            width: `${Math.max(220, boardSize * 22)}px`,
+            height: `${placeholderHeight}px`,
+            borderRadius: '8px',
+            border: nightMode ? '1px solid #333' : '1px solid #ddd',
+            background: nightMode ? '#111' : '#f6f6f6',
+          }}
+          aria-label="Diagram placeholder"
+        />
+      )}
+    </div>
+  )
+}
 
 function App() {
   const [bookData, setBookData] = useState(null)
@@ -149,11 +213,6 @@ function App() {
 
   const contentWidth = 'min(800px, calc(100% - 40px))'
 
-  const createEmptySignMap = (size) => {
-    const boardSize = Number.isInteger(size) && size > 0 ? size : 19
-    return Array.from({ length: boardSize }, () => Array.from({ length: boardSize }, () => 0))
-  }
-
   return (
     <div
       className="App"
@@ -244,13 +303,7 @@ function App() {
                     )
                   } else if (item.type === 'diagram') {
                     return (
-                      <div key={itemIndex} style={{ margin: '1em 0', display: 'flex', justifyContent: 'center' }}>
-                        <Goban
-                          signMap={createEmptySignMap(item.size)}
-                          showCoordinates={true}
-                          vertexSize={24}
-                        />
-                      </div>
+                      <LazyDiagram key={itemIndex} size={item.size} nightMode={nightMode} />
                     )
                   }
                   return null
