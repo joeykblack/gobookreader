@@ -4,6 +4,13 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: [
+      { find: /^preact\/hooks$/, replacement: 'react' },
+      { find: /^preact\/compat$/, replacement: 'react' },
+      { find: /^preact$/, replacement: 'react' },
+    ]
+  },
   build: {
     outDir: 'docs'
   }
