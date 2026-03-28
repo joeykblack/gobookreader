@@ -9,14 +9,75 @@ const createEmptySignMap = (size) => {
   return Array.from({ length: boardSize }, () => Array.from({ length: boardSize }, () => 0))
 }
 
-function LazyDiagram({ size, nightMode }) {
+const COLUMN_ALPHABET = 'ABCDEFGHJKLMNOPQRSTUVWXYZ'
+
+const parseBoardColumn = (label) => {
+  if (!label) return null
+  const normalized = String(label).toUpperCase()
+  let value = 0
+
+  for (const ch of normalized) {
+    const index = COLUMN_ALPHABET.indexOf(ch)
+    if (index === -1) return null
+    value = value * COLUMN_ALPHABET.length + (index + 1)
+  }
+
+  return value - 1
+}
+
+const parseBoardCoordinate = (coordinate, boardSize) => {
+  if (!coordinate) return null
+  const match = String(coordinate).toUpperCase().match(/^([A-Z]+)(\d+)$/)
+  if (!match) return null
+
+  const x = parseBoardColumn(match[1])
+  const row = Number(match[2])
+
+  if (x == null || Number.isNaN(row) || row < 1 || row > boardSize) return null
+
+  const y = boardSize - row
+  if (y < 0 || y >= boardSize || x < 0 || x >= boardSize) return null
+
+  return [x, y]
+}
+
+const parseViewportRange = (vw, boardSize) => {
+  if (!vw) return null
+
+  const tokens = String(vw).toUpperCase().match(/[A-Z]+\d+/g)
+  if (!tokens || tokens.length < 2) return null
+
+  const start = parseBoardCoordinate(tokens[0], boardSize)
+  const end = parseBoardCoordinate(tokens[1], boardSize)
+  if (!start || !end) return null
+
+  const minX = Math.min(start[0], end[0])
+  const maxX = Math.max(start[0], end[0])
+  const minY = Math.min(start[1], end[1])
+  const maxY = Math.max(start[1], end[1])
+
+  return {
+    rangeX: [minX, maxX],
+    rangeY: [minY, maxY],
+  }
+}
+
+function LazyDiagram({ size, viewport, nightMode }) {
   const containerRef = useRef(null)
   const [hasBeenVisible, setHasBeenVisible] = useState(false)
 
   const boardSize = Number.isInteger(size) && size > 0 ? size : 19
+  const viewportRange = useMemo(() => parseViewportRange(viewport, boardSize), [viewport, boardSize])
 
   useEffect(() => {
-    if (!containerRef.current || hasBeenVisible) return
+    if (hasBeenVisible) return
+
+    if (typeof IntersectionObserver === 'undefined') {
+      setHasBeenVisible(true)
+      return
+    }
+
+    if (!containerRef.current) return
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -34,7 +95,10 @@ function LazyDiagram({ size, nightMode }) {
   }, [hasBeenVisible])
 
   const signMap = useMemo(() => createEmptySignMap(boardSize), [boardSize])
-  const placeholderHeight = Math.max(220, boardSize * 22)
+  const visibleColumns = viewportRange ? (viewportRange.rangeX[1] - viewportRange.rangeX[0] + 1) : boardSize
+  const visibleRows = viewportRange ? (viewportRange.rangeY[1] - viewportRange.rangeY[0] + 1) : boardSize
+  const placeholderHeight = Math.max(220, visibleRows * 22)
+  const placeholderWidth = Math.max(220, visibleColumns * 22)
 
   return (
     <div
@@ -49,13 +113,15 @@ function LazyDiagram({ size, nightMode }) {
       {hasBeenVisible ? (
         <Goban
           signMap={signMap}
+          rangeX={viewportRange?.rangeX}
+          rangeY={viewportRange?.rangeY}
           showCoordinates={true}
           vertexSize={24}
         />
       ) : (
         <div
           style={{
-            width: `${Math.max(220, boardSize * 22)}px`,
+            width: `${placeholderWidth}px`,
             height: `${placeholderHeight}px`,
             borderRadius: '8px',
             border: nightMode ? '1px solid #333' : '1px solid #ddd',
@@ -123,8 +189,14 @@ function App() {
       } else if (line.startsWith('::dia(')) {
         const szMatch = line.match(/\bsz=(\d+)/)
         const size = szMatch ? Number(szMatch[1]) : 19
+        const vwMatch = line.match(/\bvw=([^\s"]+)/)
+        const viewport = vwMatch ? vwMatch[1] : null
         if (currentChapter) {
-          currentChapter.content.push({ type: 'diagram', size: Number.isNaN(size) ? 19 : size })
+          currentChapter.content.push({
+            type: 'diagram',
+            size: Number.isNaN(size) ? 19 : size,
+            viewport,
+          })
         }
         i++
       } else if (line.startsWith('::h1') || line.startsWith('::h2') || line.startsWith('::h3')) {
@@ -303,7 +375,12 @@ function App() {
                     )
                   } else if (item.type === 'diagram') {
                     return (
-                      <LazyDiagram key={itemIndex} size={item.size} nightMode={nightMode} />
+                      <LazyDiagram
+                        key={itemIndex}
+                        size={item.size}
+                        viewport={item.viewport}
+                        nightMode={nightMode}
+                      />
                     )
                   }
                   return null
