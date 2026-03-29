@@ -115,7 +115,7 @@ class EPUBToGobookConverter:
             if size == 7:
                 return 'A1G7'
             if size == 9:
-                return 'A1I9'
+                return 'A1J9'
             if size == 11:
                 return 'A1K11'
             if size == 13:
@@ -199,6 +199,12 @@ class EPUBToGobookConverter:
 
     def parse_svg_to_diagram_info(self, svg, caption_text=None, container_size=None, full_size_override=None) -> Optional[Dict]:
         """Convert an SVG element into diagram info (ab/aw, sz, vw, mv, etc.)"""
+        def safe_float(value, default=0.0):
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return default
+
         def parse_viewbox(svg_el):
             viewbox = svg_el.get('viewBox', '0 0 456 456').strip()
             parts = re.split(r'\s+', viewbox)
@@ -213,6 +219,31 @@ class EPUBToGobookConverter:
                 return x0, y0, width, height
             return 0.0, 0.0, 456.0, 456.0
 
+        def extract_board_rect(svg_el, fallback_w, fallback_h):
+            rects = svg_el.findall('.//{http://www.w3.org/2000/svg}rect')
+            best = None
+            best_area = -1.0
+
+            for rect in rects:
+                w = safe_float(rect.get('width'), 0.0)
+                h = safe_float(rect.get('height'), 0.0)
+                if w <= 0 or h <= 0:
+                    continue
+                area = w * h
+                if area > best_area:
+                    best_area = area
+                    best = (
+                        safe_float(rect.get('x'), 0.0),
+                        safe_float(rect.get('y'), 0.0),
+                        w,
+                        h,
+                    )
+
+            if best is None:
+                return 0.0, 0.0, fallback_w, fallback_h
+
+            return best
+
         def size_from_viewbox(view_w):
             size = round(view_w / 24)
             if size in (7, 9, 11, 13, 19):
@@ -222,14 +253,11 @@ class EPUBToGobookConverter:
                     return candidate
             return 19
 
-        def board_size_from_container(csize):
+        def class_size_from_container(csize):
             try:
-                c = int(csize)
-                if c in (7, 9, 11, 13, 19):
-                    return c
+                return int(csize)
             except Exception:
-                pass
-            return None
+                return None
 
         def col_letter(idx):
             if idx < 0:
@@ -255,19 +283,53 @@ class EPUBToGobookConverter:
             return None
 
         x0, y0, view_w, view_h = parse_viewbox(svg)
-        view_size = size_from_viewbox(view_w)
-        full_size = (full_size_override if full_size_override is not None else
-                     board_size_from_container(container_size) or view_size)
+        board_x, board_y, board_w, board_h = extract_board_rect(svg, view_w, view_h)
+        view_size = size_from_viewbox(board_w)
+        view_span = max(1, int(round(board_w / 24)))
+        container_class_size = class_size_from_container(container_size)
+
+        if container_class_size in (13, 19):
+            full_size = container_class_size
+        elif container_class_size == 11:
+            full_size = 19
+        elif container_class_size == 10:
+            full_size = 19
+        elif container_class_size == 9:
+            full_size = 9
+        elif container_class_size == 8:
+            full_size = 13
+        elif container_class_size == 7 and full_size_override in (13, 19):
+            full_size = full_size_override
+        elif container_class_size == 7:
+            full_size = 13
+        elif full_size_override is not None:
+            full_size = full_size_override
+        elif view_size == 11:
+            full_size = 19
+        else:
+            full_size = view_size
+
+        # Normalize to supported board sizes only.
+        if full_size not in (9, 13, 19):
+            full_size = 13 if full_size < 13 else 19
+
+        x0 = x0 - board_x
+        y0 = y0 - board_y
+
+        # c10 diagrams in this source are bottom-left crops of a 19x19 board.
+        if container_class_size == 10 and full_size == 19 and view_span == 10:
+            x0 = 0.0
+            y0 = (full_size - view_span) * 24
 
         # If this diagram is a smaller crop (e.g. c7 under a full 13 board), map to the larger board.
-        if full_size > view_size and view_size in (7, 9, 11) and full_size in (13, 19):
-            crop_offset = full_size - view_size
+        if full_size > view_span and view_span == 7 and full_size in (13, 19):
+            crop_offset = full_size - view_span
             # Coordinates are given for the local crop; shift to bottom-right on the full board.
             x0 = crop_offset * 24
             y0 = crop_offset * 24
-            vw = f"{col_letter(crop_offset)}1{col_letter(full_size - 1)}{view_size}"
+            vw = f"{col_letter(crop_offset)}1{col_letter(full_size - 1)}{view_span}"
         else:
-            vw = viewport_string(full_size, x0, y0, view_w, view_h)
+            vw = viewport_string(full_size, x0, y0, board_w, board_h)
 
         stones_black = []
         stones_white = []
@@ -382,18 +444,21 @@ class EPUBToGobookConverter:
                 return lines
 
             active_full_size = None
-            def walk(element, parent_container_size=None):
+
+            def walk(element, parent_container_size=None, parent_full_size=None):
                 nonlocal diag_index, active_full_size
                 tag = self.strip_tag(element.tag)
 
                 # Extract fig class cN for container_size
                 container_size = parent_container_size
+                current_full_size = parent_full_size if parent_full_size is not None else active_full_size
                 if tag == 'div':
                     class_attr = element.get('class', '')
                     match = re.search(r'c(\d+)', class_attr)
                     if match:
                         container_size = int(match.group(1))
                         if container_size in (13, 19):
+                            current_full_size = container_size
                             active_full_size = container_size
 
                 if tag in ('h1', 'h2', 'h3', 'h4', 'h5'):
@@ -412,14 +477,20 @@ class EPUBToGobookConverter:
                     return
 
                 if tag == 'figure':
-                    diag_lines, diag_index = self.parse_figure_as_diagram(element, chapter_clean_id, diag_index, container_size, full_size_override=active_full_size)
+                    diag_lines, diag_index = self.parse_figure_as_diagram(
+                        element,
+                        chapter_clean_id,
+                        diag_index,
+                        container_size,
+                        full_size_override=current_full_size,
+                    )
                     if diag_lines:
                         lines.extend(diag_lines)
                         return
 
                 # Recurse with container_size passed down
                 for child in element:
-                    walk(child, container_size)
+                    walk(child, container_size, current_full_size)
 
             walk(body)
         except ET.ParseError as e:
@@ -577,15 +648,10 @@ def main():
         # Create temp extraction directory
         temp_dir = Path("ebooks") / f"temp_{book_name}"
         temp_dir.mkdir(exist_ok=True)
-        
-        try:
-            extract_epub(epub_file, temp_dir)
-            converter = EPUBToGobookConverter(str(temp_dir))
-            converter.save(book_name)
-        finally:
-            # Clean up temp directory
-            shutil.rmtree(temp_dir)
-            print(f"Cleaned up {temp_dir}")
+
+        extract_epub(epub_file, temp_dir)
+        converter = EPUBToGobookConverter(str(temp_dir))
+        converter.save(book_name)
     else:
         # Manual mode with arguments
         epub_dir = sys.argv[1]
