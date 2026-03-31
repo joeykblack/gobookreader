@@ -20,7 +20,7 @@
         color: #e5e7eb;
       }
       main {
-        width: min(760px, calc(100% - 2rem));
+        width: min(980px, calc(100% - 2rem));
         padding: 1.25rem;
         border: 1px solid #334155;
         border-radius: 12px;
@@ -30,34 +30,93 @@
       .ok { color: #86efac; }
       .warn { color: #fca5a5; }
       code { background: #1f2937; padding: 0.1rem 0.3rem; border-radius: 4px; }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+      }
+      @media (max-width: 900px) {
+        .grid { grid-template-columns: 1fr; }
+      }
+      .panel {
+        border: 1px solid #334155;
+        border-radius: 10px;
+        padding: 0.75rem;
+        background: #0f172a;
+      }
+      ul {
+        margin: 0;
+        padding-left: 1.25rem;
+        max-height: 300px;
+        overflow: auto;
+      }
+      button {
+        background: #1d4ed8;
+        color: #fff;
+        border: 0;
+        border-radius: 8px;
+        padding: 0.45rem 0.7rem;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      .book-btn {
+        all: unset;
+        cursor: pointer;
+        color: #bfdbfe;
+      }
+      .controls {
+        display: flex;
+        gap: 0.6rem;
+        align-items: center;
+        flex-wrap: wrap;
+      }
     </style>
   </head>
   <body>
     <main>
       <h1>GoBooks Reader PWA</h1>
-      <p>Step 1 scaffold complete. This app is served from <code>docs/</code> for GitHub Pages.</p>
+      <p>Step 2: import EPUB, store in OPFS, parse OPF reading order, show chapters.</p>
       <p id="sw-status">Service worker: checking…</p>
+      <p id="app-status">Initializing…</p>
+
+      <section class="panel" style="margin-bottom: 1rem;">
+        <h2 style="margin-top: 0;">Import EPUB</h2>
+        <div class="controls">
+          <input id="epub-file" type="file" accept=".epub,application/epub+zip" />
+          <button id="import-button" type="button">Import</button>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="panel">
+          <h2 style="margin-top: 0;">Imported books</h2>
+          <ul id="books-list"></ul>
+        </div>
+
+        <div class="panel">
+          <h2 id="selected-book-title" style="margin-top: 0;">No book selected</h2>
+          <ul id="chapter-list"></ul>
+        </div>
+      </section>
     </main>
 
-    <script>
-      (async () => {
-        const status = document.getElementById('sw-status')
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dexie@4.0.8/dist/dexie.min.js"></script>
+    <script type="module">
+      const appStatus = document.getElementById('app-status')
 
-        if (!('serviceWorker' in navigator)) {
-          status.textContent = 'Service worker: not supported in this browser.'
-          status.className = 'warn'
-          return
-        }
-
-        try {
-          const registration = await navigator.serviceWorker.register('./sw.js')
-          status.textContent = `Service worker: registered (${registration.scope})`
-          status.className = 'ok'
-        } catch (err) {
-          status.textContent = `Service worker: registration failed (${err.message})`
-          status.className = 'warn'
-        }
-      })()
+      if (location.protocol === 'file:') {
+        appStatus.textContent = 'This app must be served over http(s), not file://. Start a local server and open the docs URL.'
+        appStatus.className = 'warn'
+      } else {
+        import('./js/app.js').catch(err => {
+          appStatus.textContent = `Failed to start app: ${err.message}`
+          appStatus.className = 'warn'
+        })
+      }
     </script>
   </body>
 </html>
