@@ -1,6 +1,7 @@
 import { getAllBooks, upsertBook } from './db.js'
 import { importEpubFile } from './epub.js'
 import { isOpfsSupported } from './opfs.js'
+import { createReaderController } from './reader.js'
 
 const swStatusEl = document.getElementById('sw-status')
 const appStatusEl = document.getElementById('app-status')
@@ -9,8 +10,27 @@ const importButtonEl = document.getElementById('import-button')
 const booksListEl = document.getElementById('books-list')
 const chapterListEl = document.getElementById('chapter-list')
 const selectedBookTitleEl = document.getElementById('selected-book-title')
+const readerRootEl = document.getElementById('reader-panel')
+const readerTitleEl = document.getElementById('reader-title')
+const readerChapterSelectEl = document.getElementById('reader-chapter-select')
+const readerPrevButtonEl = document.getElementById('reader-prev')
+const readerNextButtonEl = document.getElementById('reader-next')
+const readerCloseButtonEl = document.getElementById('reader-close')
+const readerFrameEl = document.getElementById('reader-frame')
 
 let books = []
+let selectedBookId = null
+
+const reader = createReaderController({
+  rootEl: readerRootEl,
+  titleEl: readerTitleEl,
+  selectEl: readerChapterSelectEl,
+  prevButtonEl: readerPrevButtonEl,
+  nextButtonEl: readerNextButtonEl,
+  closeButtonEl: readerCloseButtonEl,
+  frameEl: readerFrameEl,
+  statusCallback: setStatus
+})
 
 function setStatus(message, kind = '') {
   appStatusEl.textContent = message
@@ -53,7 +73,13 @@ function renderChapterList(book) {
 
   for (const chapter of book.chapters) {
     const li = document.createElement('li')
-    li.textContent = `${chapter.index + 1}. ${chapter.href}`
+    const openButton = document.createElement('button')
+    openButton.type = 'button'
+    openButton.textContent = `${chapter.index + 1}. ${chapter.href}`
+    openButton.addEventListener('click', async () => {
+      await reader.openBook(book, chapter.index)
+    })
+    li.append(openButton)
     chapterListEl.append(li)
   }
 }
@@ -74,12 +100,17 @@ function renderBooks() {
     const button = document.createElement('button')
     button.type = 'button'
     button.textContent = `${book.title} (${book.author})`
-    button.addEventListener('click', () => renderChapterList(book))
+    button.addEventListener('click', () => {
+      selectedBookId = book.id
+      renderChapterList(book)
+    })
     li.append(button)
     booksListEl.append(li)
   }
 
-  renderChapterList(books[0])
+  const selected = books.find(book => book.id === selectedBookId) || books[0]
+  selectedBookId = selected.id
+  renderChapterList(selected)
 }
 
 async function refreshBooks() {
@@ -100,6 +131,7 @@ async function importSelectedEpub() {
   try {
     const book = await importEpubFile(file, msg => setStatus(msg))
     await upsertBook(book)
+    selectedBookId = book.id
     await refreshBooks()
     setStatus(`Imported: ${book.title}`, 'ok')
   } catch (err) {
@@ -115,7 +147,7 @@ async function init() {
   if (!isOpfsSupported()) {
     setStatus('OPFS is not supported in this browser. Use a Chromium-based browser.', 'warn')
   } else {
-    setStatus('Ready. Import an EPUB to begin.')
+    setStatus('Ready. Import an EPUB and open a chapter to read.')
   }
 
   importButtonEl.addEventListener('click', importSelectedEpub)

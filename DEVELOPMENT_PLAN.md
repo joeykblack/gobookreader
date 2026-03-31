@@ -73,7 +73,7 @@ Acceptance checks:
 
 ---
 
-### M3 — Chapter reader iframe
+### M3 — Chapter reader iframe (completed)
 
 Deliverables:
 

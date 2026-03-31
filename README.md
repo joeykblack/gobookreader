@@ -8,7 +8,7 @@ Progressive Web App for reading EPUB books purchased from gobooks.com, with enha
 
 This project is hosted on GitHub Pages and served from the docs folder.
 
-## Current status (through Step 2)
+## Current status (through Step 3)
 
 Completed scaffold files:
 
@@ -30,6 +30,9 @@ Current behavior:
 - Imported EPUB entries are written into OPFS under books/{bookId}/files/...
 - content.opf is parsed to extract metadata and chapter spine order.
 - Imported books and chapter lists are persisted/shown via Dexie (IndexedDB).
+- Chapter reader loads selected XHTML spine content in a sandboxed iframe.
+- Reader supports chapter dropdown + Previous/Next navigation.
+- Chapter assets (CSS/JS/images) are rewritten to Blob URLs so EPUB diagram scripts can run.
 
 ## Run locally
 
@@ -46,9 +49,8 @@ Then open **http://localhost:8000** in your browser.
 
 ## Next planned steps
 
-1. Chapter reader in sandboxed iframe
-2. Book shelf and delete flow
-3. Answer hiding injection
-4. SRS (SM-2) data model with Dexie
-5. Review queue UI
-6. Heuristic polish for Kiseido Go books
+1. Book shelf and delete flow
+2. Answer hiding injection
+3. SRS (SM-2) data model with Dexie
+4. Review queue UI
+5. Heuristic polish for Kiseido Go books
