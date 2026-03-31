@@ -16,6 +16,7 @@ Completed scaffold files:
 - [docs/icons/icon-192.svg](docs/icons/icon-192.svg)
 - [docs/icons/icon-512.svg](docs/icons/icon-512.svg)
 - [DESIGN.md](DESIGN.md)
+- [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md)
 
 Current behavior:
 
