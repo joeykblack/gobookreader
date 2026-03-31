@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#111827" />
+    <title>GoBooks Reader PWA</title>
+    <link rel="manifest" href="./manifest.json" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        background: #0b1020;
+        color: #e5e7eb;
+      }
+      main {
+        width: min(760px, calc(100% - 2rem));
+        padding: 1.25rem;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        background: #111827;
+      }
+      h1 { margin-top: 0; }
+      .ok { color: #86efac; }
+      .warn { color: #fca5a5; }
+      code { background: #1f2937; padding: 0.1rem 0.3rem; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>GoBooks Reader PWA</h1>
+      <p>Step 1 scaffold complete. This app is served from <code>docs/</code> for GitHub Pages.</p>
+      <p id="sw-status">Service worker: checking…</p>
+    </main>
+
+    <script>
+      (async () => {
+        const status = document.getElementById('sw-status')
+
+        if (!('serviceWorker' in navigator)) {
+          status.textContent = 'Service worker: not supported in this browser.'
+          status.className = 'warn'
+          return
+        }
+
+        try {
+          const registration = await navigator.serviceWorker.register('./sw.js')
+          status.textContent = `Service worker: registered (${registration.scope})`
+          status.className = 'ok'
+        } catch (err) {
+          status.textContent = `Service worker: registration failed (${err.message})`
+          status.className = 'warn'
+        }
+      })()
+    </script>
+  </body>
+</html>
