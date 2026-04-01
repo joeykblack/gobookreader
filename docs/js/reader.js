@@ -258,6 +258,14 @@ export function createReaderController({
       }
     }
 
+    const styleElements = Array.from(doc.querySelectorAll('style'))
+    for (const styleEl of styleElements) {
+      const cssText = styleEl.textContent || ''
+      if (!cssText.trim()) continue
+      const rewrittenCss = await rewriteCssUrls(book.id, chapterPath, cssText, cssMap)
+      styleEl.textContent = rewrittenCss
+    }
+
     const chapterAnchors = Array.from(doc.querySelectorAll('a[href]'))
     for (const anchor of chapterAnchors) {
       const href = anchor.getAttribute('href')
@@ -269,6 +277,15 @@ export function createReaderController({
       if (resolved === chapterPath && hash) {
         anchor.setAttribute('href', hash)
       }
+    }
+
+    // Cross-browser SVG text centering fix (Firefox can render move numbers slightly high).
+    const svgNumberTexts = Array.from(doc.querySelectorAll('svg text'))
+    for (const textEl of svgNumberTexts) {
+      const value = (textEl.textContent || '').trim()
+      if (!/^\d+$/.test(value)) continue
+
+      textEl.setAttribute('dy', '0.30em')
     }
 
     if (isXhtml) {
