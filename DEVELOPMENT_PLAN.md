@@ -118,7 +118,7 @@ Acceptance checks:
 
 ---
 
-### M5 — Answer hiding enhancement injection
+### M5 — Answer hiding enhancement injection (completed)
 
 Deliverables:
 

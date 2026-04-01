@@ -1,4 +1,5 @@
 import { readBookFileBytes, readBookFileText } from './opfs.js'
+import { injectAnswerHiding } from './enhance.js'
 
 function dirname(path) {
   const idx = path.lastIndexOf('/')
@@ -287,6 +288,9 @@ export function createReaderController({
 
       textEl.setAttribute('dy', '0.30em')
     }
+
+    // Inject answer hiding for GoBooks problem pages.
+    injectAnswerHiding(doc)
 
     if (isXhtml) {
       return new XMLSerializer().serializeToString(doc)

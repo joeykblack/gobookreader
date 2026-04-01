@@ -8,7 +8,7 @@ Progressive Web App for reading EPUB books purchased from gobooks.com, with enha
 
 This project is hosted on GitHub Pages and served from the docs folder.
 
-## Current status (through Step 4)
+## Current status (through Step 5)
 
 Completed scaffold files:
 
@@ -34,6 +34,7 @@ Current behavior:
 - Reader supports chapter dropdown + Previous/Next navigation.
 - Chapter assets (CSS/JS/images) are rewritten to Blob URLs so EPUB diagram scripts can run.
 - Books can be deleted from the bookshelf (removes OPFS files + IndexedDB record).
+- Answer sections on GoBooks problem pages are hidden by default behind a "Show Answer" button.
 
 ## Run locally
 
@@ -50,8 +51,6 @@ Then open **http://localhost:8000** in your browser.
 
 ## Next planned steps
 
-1. Answer hiding injection
-2. SRS (SM-2) data model with Dexie
-3. Review queue UI
-4. Heuristic polish for Kiseido Go books
-5. Heuristic polish for Kiseido Go books
+1. SRS (SM-2) data model with Dexie
+2. Review queue UI
+3. Heuristic polish for Kiseido Go books
