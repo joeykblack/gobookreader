@@ -1,6 +1,6 @@
-import { getAllBooks, upsertBook } from './db.js'
+import { getAllBooks, upsertBook, deleteBook } from './db.js'
 import { importEpubFile } from './epub.js'
-import { isOpfsSupported } from './opfs.js'
+import { isOpfsSupported, deleteBookFiles } from './opfs.js'
 import { createReaderController } from './reader.js'
 
 const swStatusEl = document.getElementById('sw-status')
@@ -97,20 +97,59 @@ function renderBooks() {
 
   for (const book of books) {
     const li = document.createElement('li')
-    const button = document.createElement('button')
-    button.type = 'button'
-    button.textContent = `${book.title} (${book.author})`
-    button.addEventListener('click', () => {
+    li.style.display = 'flex'
+    li.style.alignItems = 'center'
+    li.style.gap = '0.5rem'
+    li.style.marginBottom = '0.35rem'
+
+    const selectBtn = document.createElement('button')
+    selectBtn.type = 'button'
+    selectBtn.textContent = `${book.title} (${book.author})`
+    selectBtn.addEventListener('click', () => {
       selectedBookId = book.id
       renderChapterList(book)
     })
-    li.append(button)
+
+    const deleteBtn = document.createElement('button')
+    deleteBtn.type = 'button'
+    deleteBtn.textContent = '🗑'
+    deleteBtn.title = `Delete "${book.title}"`
+    deleteBtn.className = 'btn-danger'
+    deleteBtn.addEventListener('click', () => deleteSelectedBook(book))
+
+    li.append(selectBtn, deleteBtn)
     booksListEl.append(li)
   }
 
   const selected = books.find(book => book.id === selectedBookId) || books[0]
   selectedBookId = selected.id
   renderChapterList(selected)
+}
+
+async function deleteSelectedBook(book) {
+  if (!confirm(`Delete "${book.title}"?\n\nThis will remove the book and all its files. This cannot be undone.`)) {
+    return
+  }
+
+  setStatus(`Deleting "${book.title}"…`)
+
+  try {
+    if (reader.isOpen(book.id)) {
+      reader.closeReader()
+    }
+
+    await deleteBookFiles(book.id)
+    await deleteBook(book.id)
+
+    if (selectedBookId === book.id) {
+      selectedBookId = null
+    }
+
+    await refreshBooks()
+    setStatus(`Deleted: ${book.title}`, 'ok')
+  } catch (err) {
+    setStatus(`Delete failed: ${err.message}`, 'warn')
+  }
 }
 
 async function refreshBooks() {

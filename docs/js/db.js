@@ -21,3 +21,7 @@ export async function getAllBooks() {
 export async function getBook(bookId) {
   return db.books.get(bookId)
 }
+
+export async function deleteBook(bookId) {
+  await db.books.delete(bookId)
+}

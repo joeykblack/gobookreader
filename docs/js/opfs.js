@@ -73,6 +73,12 @@ export async function writeBookFile(bookId, relativePath, data) {
   await writable.close()
 }
 
+export async function deleteBookFiles(bookId) {
+  const root = await navigator.storage.getDirectory()
+  const booksDir = await root.getDirectoryHandle('books', { create: true })
+  await booksDir.removeEntry(bookId, { recursive: true })
+}
+
 export async function readBookFileBytes(bookId, relativePath) {
   const fileHandle = await getBookFileHandle(bookId, relativePath)
   const file = await fileHandle.getFile()

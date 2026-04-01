@@ -373,7 +373,8 @@ export function createReaderController({
   return {
     openBook,
     closeReader,
-    isOpen() {
+    isOpen(bookId) {
+      if (bookId !== undefined) return currentBook?.id === bookId
       return !!currentBook
     }
   }

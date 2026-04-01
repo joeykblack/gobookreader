@@ -96,7 +96,7 @@ Acceptance checks:
 
 ---
 
-### M4 — Bookshelf management
+### M4 — Bookshelf management (completed)
 
 Deliverables:
 
