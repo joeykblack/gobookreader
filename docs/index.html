@@ -25,7 +25,7 @@
         width: 100%;
         min-height: 100dvh;
         box-sizing: border-box;
-        padding: calc(var(--top-bar-height) + 1rem) 1rem calc(var(--bottom-bar-height) + 1rem);
+        padding: var(--top-bar-height) 1rem var(--bottom-bar-height);
       }
       h1 { margin: 0; }
       .ok { color: #86efac; }
@@ -363,20 +363,24 @@
       .due-later    { background: #14532d; color: #86efac; }
       #reader-frame {
         width: 100%;
-        height: calc(100dvh - var(--top-bar-height) - var(--bottom-bar-height) - 2rem);
+        height: calc(100dvh - var(--top-bar-height) - var(--bottom-bar-height));
         border: 1px solid #334155;
         border-radius: 8px;
         background: #fff;
+        box-sizing: border-box;
       }
       @media (max-width: 640px) {
         main {
           --bottom-bar-height: 176px;
-          padding: 1rem;
-          padding-top: calc(var(--top-bar-height) + 0.75rem);
-          padding-bottom: calc(var(--bottom-bar-height) + 0.75rem);
+          padding: var(--top-bar-height) 0 var(--bottom-bar-height);
         }
         .bar-inner {
           width: calc(100% - 1rem);
+        }
+        .reader-shell {
+          width: 100%;
+          max-width: none;
+          margin: 0;
         }
         .menu-panel {
           position: fixed;
@@ -417,7 +421,10 @@
           flex: 1 1 auto;
         }
         #reader-frame {
-          height: calc(100dvh - var(--top-bar-height) - var(--bottom-bar-height) - 1.5rem);
+          height: calc(100dvh - var(--top-bar-height) - var(--bottom-bar-height));
+          border-left: 0;
+          border-right: 0;
+          border-radius: 0;
         }
       }
     </style>
