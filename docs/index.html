@@ -100,9 +100,13 @@
         margin: 0 auto 1rem;
       }
       .reader-shell {
-        width: min(var(--reader-max), 100%);
-        margin: 0 auto;
-        height: calc(var(--app-height) - var(--top-bar-height) - var(--bottom-bar-height));
+        position: fixed;
+        top: var(--top-bar-height);
+        bottom: var(--bottom-bar-height);
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(var(--reader-max), calc(100% - 2rem));
+        z-index: 10;
       }
       .reader-mode .reader-shell {
         width: min(var(--reader-max), 100%);
@@ -380,10 +384,11 @@
           width: calc(100% - 1rem);
         }
         .reader-shell {
+          left: 0;
+          right: 0;
+          transform: none;
           width: 100%;
           max-width: none;
-          margin: 0;
-          height: calc(var(--app-height) - var(--top-bar-height) - var(--bottom-bar-height));
         }
         .menu-panel {
           position: fixed;
