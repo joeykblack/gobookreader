@@ -37,15 +37,18 @@ const menuReviewEl = document.getElementById('menu-review')
 const menuLibraryEl = document.getElementById('menu-library')
 const menuImportEl = document.getElementById('menu-import')
 const menuInfoEl = document.getElementById('menu-info')
+const menuAboutEl = document.getElementById('menu-about')
 const importView = document.getElementById('import-view')
 const bookshelfView = document.getElementById('bookshelf-view')
 const queueView = document.getElementById('queue-view')
 const queueEmptyView = document.getElementById('queue-empty-view')
 const infoView = document.getElementById('info-view')
+const aboutView = document.getElementById('about-view')
 const reviewEmptyTextEl = document.getElementById('review-empty-text')
 const reviewQueueSummaryEl = document.getElementById('review-queue-summary')
 const readerFooterControlsEl = document.getElementById('reader-footer-controls')
 const clearAllReviewsBtn = document.getElementById('clear-all-reviews')
+const aboutVersionEl = document.getElementById('about-version')
 
 const READER_STATE_KEY = 'gorecall.readerState.v1'
 
@@ -110,7 +113,19 @@ const menuItemsByView = {
   queue: menuReviewEl,
   library: menuLibraryEl,
   import: menuImportEl,
-  info: menuInfoEl
+  info: menuInfoEl,
+  about: menuAboutEl
+}
+
+async function loadAppVersion() {
+  try {
+    const response = await fetch('./sw.js', { cache: 'no-store' })
+    const text = await response.text()
+    const match = text.match(/const\s+CACHE_NAME\s*=\s*['"]([^'"]+)['"]/) 
+    aboutVersionEl.textContent = `Version: ${match?.[1] || 'unknown'}`
+  } catch {
+    aboutVersionEl.textContent = 'Version: unavailable'
+  }
 }
 
 function closeMenu() {
@@ -662,6 +677,7 @@ function switchView(view) {
   queueView.style.display = 'none'
   queueEmptyView.style.display = 'none'
   infoView.style.display = view === 'info' ? '' : 'none'
+  aboutView.style.display = view === 'about' ? '' : 'none'
   reader.setViewVisible(view === 'read' || view === 'queue')
   readerFooterControlsEl.style.display = view === 'read' || view === 'queue' ? '' : 'none'
   reviewQueueSummaryEl.style.display = view === 'queue' ? '' : 'none'
@@ -780,6 +796,10 @@ async function init() {
     closeMenu()
     switchView('info')
   })
+  menuAboutEl.addEventListener('click', () => {
+    closeMenu()
+    switchView('about')
+  })
   readerNextReviewButtonEl.addEventListener('click', goToNextReview)
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape') {
@@ -794,6 +814,7 @@ async function init() {
   })
   window.addEventListener('message', handleSrsMessage)
   attachSectionTracking()
+  await loadAppVersion()
   switchView('library')
   await refreshBooks()
   await restoreLastReadingPosition()
