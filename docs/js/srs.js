@@ -37,6 +37,7 @@ export function createReviewItem({ itemId, bookId, chapterFile, sectionName = ''
     chapterFile,
     sectionName,
     positionOffset,
+    createdAt: new Date().toISOString(),
     easeFactor: DEFAULT_EASE_FACTOR,
     intervalDays: 0,
     repetitions: 0,

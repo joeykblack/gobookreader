@@ -407,6 +407,59 @@
       .due-tomorrow { background: #422006; color: #fdba74; }
       .due-week     { background: #1e3a5f; color: #93c5fd; }
       .due-later    { background: #14532d; color: #86efac; }
+      .stats-kpis {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.6rem;
+        margin-bottom: 1rem;
+      }
+      .kpi-card {
+        border: 1px solid #334155;
+        border-radius: 8px;
+        background: #0b1224;
+        padding: 0.55rem 0.65rem;
+      }
+      .kpi-label {
+        color: #9ca3af;
+        font-size: 0.74rem;
+      }
+      .kpi-value {
+        color: #e5e7eb;
+        font-size: 1.1rem;
+        font-weight: 700;
+      }
+      .stats-history {
+        display: flex;
+        flex-direction: column;
+        gap: 0.38rem;
+      }
+      .stats-row {
+        display: grid;
+        grid-template-columns: 4.2rem 1fr auto;
+        gap: 0.55rem;
+        align-items: center;
+      }
+      .stats-date {
+        color: #94a3b8;
+        font-size: 0.78rem;
+      }
+      .stats-bars {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+      }
+      .stats-bar {
+        height: 0.38rem;
+        border-radius: 999px;
+        background: #334155;
+      }
+      .stats-bar.new { background: #60a5fa; }
+      .stats-bar.reviewed { background: #34d399; }
+      .stats-counts {
+        color: #cbd5e1;
+        font-size: 0.74rem;
+        white-space: nowrap;
+      }
       #reader-frame {
         width: 100%;
         height: 100%;
@@ -515,6 +568,7 @@
             <button id="menu-library" class="menu-item" type="button" role="menuitem">Library</button>
             <button id="menu-import" class="menu-item" type="button" role="menuitem">Import</button>
             <button id="menu-info" class="menu-item" type="button" role="menuitem">Review Info</button>
+            <button id="menu-stats" class="menu-item" type="button" role="menuitem">Stats</button>
             <button id="menu-about" class="menu-item" type="button" role="menuitem">About</button>
           </div>
         </div>
@@ -550,8 +604,16 @@
           <h2 style="margin: 0;">Review info</h2>
           <button id="clear-all-reviews" type="button" class="btn-danger">Clear all</button>
         </div>
+        <p id="review-today-stats" class="queue-summary" style="margin-bottom:0.8rem;"></p>
         <div id="review-chart" class="chart-wrap"></div>
         <ul id="review-info-list" class="info-list"></ul>
+      </section>
+
+      <section id="stats-view" class="panel app-section" style="display: none;">
+        <h2 style="margin-top: 0; margin-bottom: 0.7rem;">Stats</h2>
+        <p id="stats-today" class="queue-summary" style="margin-bottom:0.8rem;"></p>
+        <div id="stats-kpis" class="stats-kpis"></div>
+        <div id="stats-history" class="stats-history"></div>
       </section>
 
       <section id="about-view" class="panel app-section" style="display: none;">

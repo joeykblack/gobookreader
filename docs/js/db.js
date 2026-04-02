@@ -15,6 +15,11 @@ db.version(2).stores({
   reviews: 'itemId,bookId,dueDate,lastReviewedAt'
 })
 
+db.version(3).stores({
+  books: 'id,title,importedAt',
+  reviews: 'itemId,bookId,dueDate,lastReviewedAt,createdAt'
+})
+
 export async function upsertBook(book) {
   await db.books.put(book)
 }

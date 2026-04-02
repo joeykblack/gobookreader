@@ -39,13 +39,19 @@ const menuReviewEl = document.getElementById('menu-review')
 const menuLibraryEl = document.getElementById('menu-library')
 const menuImportEl = document.getElementById('menu-import')
 const menuInfoEl = document.getElementById('menu-info')
+const menuStatsEl = document.getElementById('menu-stats')
 const menuAboutEl = document.getElementById('menu-about')
 const importView = document.getElementById('import-view')
 const bookshelfView = document.getElementById('bookshelf-view')
 const queueView = document.getElementById('queue-view')
 const queueEmptyView = document.getElementById('queue-empty-view')
 const infoView = document.getElementById('info-view')
+const statsView = document.getElementById('stats-view')
 const aboutView = document.getElementById('about-view')
+const reviewTodayStatsEl = document.getElementById('review-today-stats')
+const statsTodayEl = document.getElementById('stats-today')
+const statsKpisEl = document.getElementById('stats-kpis')
+const statsHistoryEl = document.getElementById('stats-history')
 const reviewEmptyTextEl = document.getElementById('review-empty-text')
 const reviewQueueSummaryEl = document.getElementById('review-queue-summary')
 const readerFooterControlsEl = document.getElementById('reader-footer-controls')
@@ -117,6 +123,7 @@ const menuItemsByView = {
   library: menuLibraryEl,
   import: menuImportEl,
   info: menuInfoEl,
+  stats: menuStatsEl,
   about: menuAboutEl
 }
 
@@ -454,6 +461,7 @@ async function handleSrsMessage(event) {
   if (currentReviewItem && currentReviewItem.itemId === itemId) {
     if (activeView === 'queue') await renderReviewQueue()
     if (activeView === 'info') await renderReviewInfo()
+    if (activeView === 'stats') await renderStatsView()
   }
 }
 
@@ -504,6 +512,11 @@ function dueBadgeInfo(dueDateStr, todayStr) {
   else if (diff <= 6) text = `In ${diff} days`
   else text = dueDateStr
   return { text, cssClass: 'due-' + bucket.key }
+}
+
+function isSameLocalDate(isoString, todayStr) {
+  if (!isoString) return false
+  return localDateStr(new Date(isoString)) === todayStr
 }
 
 async function getDueReviews() {
@@ -612,6 +625,12 @@ async function renderReviewInfo() {
   const todayStr = localDateStr()
   const allReviews = await getAllReviews()
 
+  const newToday = allReviews.filter(r => isSameLocalDate(r.createdAt, todayStr)).length
+  const reviewedToday = allReviews.filter(r => isSameLocalDate(r.lastReviewedAt, todayStr)).length
+  if (reviewTodayStatsEl) {
+    reviewTodayStatsEl.textContent = `Today: ${newToday} new · ${reviewedToday} reviewed`
+  }
+
   // --- Chart ---
   const reviewChartEl = document.getElementById('review-chart')
   reviewChartEl.innerHTML = ''
@@ -708,6 +727,107 @@ async function renderReviewInfo() {
   }
 }
 
+function addDays(dateLike, days) {
+  const d = new Date(dateLike)
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() + days)
+  return d
+}
+
+function shortDate(yyyyMmDd) {
+  const [y, m, d] = yyyyMmDd.split('-')
+  return `${m}/${d}`
+}
+
+async function renderStatsView() {
+  const allReviews = await getAllReviews()
+  const today = new Date()
+  const todayStr = localDateStr(today)
+
+  const newToday = allReviews.filter(r => isSameLocalDate(r.createdAt, todayStr)).length
+  const reviewedToday = allReviews.filter(r => isSameLocalDate(r.lastReviewedAt, todayStr)).length
+  statsTodayEl.textContent = `Today: ${newToday} new · ${reviewedToday} reviewed`
+
+  const last7Start = localDateStr(addDays(today, -6))
+  const new7 = allReviews.filter(r => r.createdAt && localDateStr(new Date(r.createdAt)) >= last7Start).length
+  const reviewed7 = allReviews.filter(r => r.lastReviewedAt && localDateStr(new Date(r.lastReviewedAt)) >= last7Start).length
+
+  const last30Start = localDateStr(addDays(today, -29))
+  const new30 = allReviews.filter(r => r.createdAt && localDateStr(new Date(r.createdAt)) >= last30Start).length
+  const reviewed30 = allReviews.filter(r => r.lastReviewedAt && localDateStr(new Date(r.lastReviewedAt)) >= last30Start).length
+
+  statsKpisEl.innerHTML = ''
+  const kpis = [
+    { label: 'Last 7 days', value: `${new7} new · ${reviewed7} reviewed` },
+    { label: 'Last 30 days', value: `${new30} new · ${reviewed30} reviewed` },
+    { label: 'Total items', value: `${allReviews.length}` }
+  ]
+
+  for (const kpi of kpis) {
+    const card = document.createElement('div')
+    card.className = 'kpi-card'
+
+    const label = document.createElement('div')
+    label.className = 'kpi-label'
+    label.textContent = kpi.label
+
+    const value = document.createElement('div')
+    value.className = 'kpi-value'
+    value.textContent = kpi.value
+
+    card.append(label, value)
+    statsKpisEl.append(card)
+  }
+
+  const days = []
+  for (let i = 13; i >= 0; i--) {
+    days.push(localDateStr(addDays(today, -i)))
+  }
+
+  const map = new Map(days.map(d => [d, { new: 0, reviewed: 0 }]))
+
+  for (const review of allReviews) {
+    const created = review.createdAt ? localDateStr(new Date(review.createdAt)) : ''
+    const reviewed = review.lastReviewedAt ? localDateStr(new Date(review.lastReviewedAt)) : ''
+    if (map.has(created)) map.get(created).new += 1
+    if (map.has(reviewed)) map.get(reviewed).reviewed += 1
+  }
+
+  const maxCount = Math.max(1, ...days.map(d => Math.max(map.get(d).new, map.get(d).reviewed)))
+
+  statsHistoryEl.innerHTML = ''
+  for (const day of days) {
+    const row = document.createElement('div')
+    row.className = 'stats-row'
+
+    const dateEl = document.createElement('div')
+    dateEl.className = 'stats-date'
+    dateEl.textContent = shortDate(day)
+
+    const bars = document.createElement('div')
+    bars.className = 'stats-bars'
+
+    const newBar = document.createElement('div')
+    newBar.className = 'stats-bar new'
+    newBar.style.width = `${Math.max(2, Math.round((map.get(day).new / maxCount) * 100))}%`
+    newBar.style.opacity = map.get(day).new ? '1' : '0.25'
+
+    const reviewedBar = document.createElement('div')
+    reviewedBar.className = 'stats-bar reviewed'
+    reviewedBar.style.width = `${Math.max(2, Math.round((map.get(day).reviewed / maxCount) * 100))}%`
+    reviewedBar.style.opacity = map.get(day).reviewed ? '1' : '0.25'
+
+    bars.append(newBar, reviewedBar)
+
+    const counts = document.createElement('div')
+    counts.className = 'stats-counts'
+    counts.textContent = `${map.get(day).new} / ${map.get(day).reviewed}`
+
+    row.append(dateEl, bars, counts)
+    statsHistoryEl.append(row)
+  }
+}
+
 function switchView(view) {
   activeView = view
   readerState.activeView = view
@@ -718,6 +838,7 @@ function switchView(view) {
   queueView.style.display = 'none'
   queueEmptyView.style.display = 'none'
   infoView.style.display = view === 'info' ? '' : 'none'
+  statsView.style.display = view === 'stats' ? '' : 'none'
   aboutView.style.display = view === 'about' ? '' : 'none'
   reader.setViewVisible(view === 'read' || view === 'queue')
   readerFooterControlsEl.style.display = view === 'read' || view === 'queue' ? '' : 'none'
@@ -735,6 +856,7 @@ function switchView(view) {
   updateLayoutMetrics()
   if (view === 'queue') renderReviewQueue()
   if (view === 'info') renderReviewInfo()
+  if (view === 'stats') renderStatsView()
 }
 
 async function openCurrentBookForRead() {
@@ -847,6 +969,10 @@ async function init() {
   menuInfoEl.addEventListener('click', () => {
     closeMenu()
     switchView('info')
+  })
+  menuStatsEl.addEventListener('click', () => {
+    closeMenu()
+    switchView('stats')
   })
   menuAboutEl.addEventListener('click', () => {
     closeMenu()
