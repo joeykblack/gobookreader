@@ -82,7 +82,7 @@ function makeSrsButtonGroup(doc, sectionName) {
   container.setAttribute('style', SRS_CONTAINER_STYLE)
 
   const label = doc.createElement('span')
-  label.textContent = '📖 Review:'
+  label.textContent = `${sectionName}:`
   label.setAttribute('style', SRS_LABEL_STYLE)
   container.appendChild(label)
 
