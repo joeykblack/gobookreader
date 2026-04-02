@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gobooks-reader-shell-v45';
+const CACHE_NAME = 'gobooks-reader-shell-v47';
 const APP_SHELL = [
   './',
   './index.html',

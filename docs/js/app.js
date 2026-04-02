@@ -59,10 +59,11 @@ function loadReaderState() {
     const parsed = JSON.parse(localStorage.getItem(READER_STATE_KEY) || '{}')
     return {
       selectedBookId: parsed.selectedBookId || null,
+      activeView: parsed.activeView || 'library',
       books: parsed.books && typeof parsed.books === 'object' ? parsed.books : {}
     }
   } catch {
-    return { selectedBookId: null, books: {} }
+    return { selectedBookId: null, activeView: 'library', books: {} }
   }
 }
 
@@ -107,7 +108,7 @@ function getBookState(bookId) {
 let books = []
 let selectedBookId = readerState.selectedBookId
 let currentReviewItem = null  // Track which item from queue is being reviewed
-let activeView = 'library'
+let activeView = readerState.activeView || 'library'
 let detachSectionTracker = null
 
 const menuItemsByView = {
@@ -170,6 +171,13 @@ function updateLayoutMetrics() {
   }
   root.style.setProperty('--reader-top', `${readerTop.toFixed(2)}px`)
   root.style.setProperty('--reader-height', `${readerHeight.toFixed(2)}px`)
+
+  // Force exact reader fit between fixed bars using measured pixels.
+  // This avoids Android viewport rounding drift that can leave a visible bottom gap.
+  if (readerRootEl) {
+    readerRootEl.style.top = `${readerTop.toFixed(2)}px`
+    readerRootEl.style.height = `${Math.max(0, readerHeight + 1).toFixed(2)}px`
+  }
 }
 
 async function getChapterReviewStates(bookId, chapterFile) {
@@ -699,6 +707,8 @@ async function renderReviewInfo() {
 
 function switchView(view) {
   activeView = view
+  readerState.activeView = view
+  saveReaderState()
   document.body.classList.toggle('review-mode', view === 'queue')
   importView.style.display = view === 'import' ? '' : 'none'
   bookshelfView.style.display = view === 'library' ? '' : 'none'
@@ -854,9 +864,12 @@ async function init() {
   window.addEventListener('message', handleSrsMessage)
   attachSectionTracking()
   await loadAppVersion()
-  switchView('library')
   await refreshBooks()
-  await restoreLastReadingPosition()
+  switchView(activeView)
+
+  if (activeView === 'read') {
+    await restoreLastReadingPosition()
+  }
 }
 
 init()
