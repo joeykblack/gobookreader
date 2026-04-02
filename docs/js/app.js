@@ -149,9 +149,13 @@ function toggleMenu() {
 
 function updateLayoutMetrics() {
   const root = document.documentElement
+  const viewportHeight = Math.floor(window.visualViewport?.height || window.innerHeight || 0)
   const topHeight = Math.ceil(appHeaderEl?.getBoundingClientRect().height || 0)
   const bottomHeight = Math.ceil(appFooterEl?.getBoundingClientRect().height || 0)
 
+  if (viewportHeight > 0) {
+    root.style.setProperty('--app-height', `${viewportHeight}px`)
+  }
   if (topHeight > 0) {
     root.style.setProperty('--top-bar-height', `${topHeight}px`)
   }

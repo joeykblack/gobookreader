@@ -10,6 +10,7 @@
       :root {
         color-scheme: light dark;
         font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        --app-height: 100dvh;
         --top-bar-height: 72px;
         --bottom-bar-height: 118px;
         --content-max: 980px;
@@ -17,13 +18,13 @@
       }
       body {
         margin: 0;
-        min-height: 100dvh;
+        min-height: var(--app-height);
         background: #0b1020;
         color: #e5e7eb;
       }
       main {
         width: 100%;
-        min-height: 100dvh;
+        min-height: var(--app-height);
         box-sizing: border-box;
         padding: var(--top-bar-height) 1rem var(--bottom-bar-height);
       }
@@ -101,7 +102,7 @@
       .reader-shell {
         width: min(var(--reader-max), 100%);
         margin: 0 auto;
-        height: calc(100dvh - var(--top-bar-height) - var(--bottom-bar-height));
+        height: calc(var(--app-height) - var(--top-bar-height) - var(--bottom-bar-height));
       }
       .reader-mode .reader-shell {
         width: min(var(--reader-max), 100%);
@@ -382,7 +383,7 @@
           width: 100%;
           max-width: none;
           margin: 0;
-          height: calc(100dvh - var(--top-bar-height) - var(--bottom-bar-height));
+          height: calc(var(--app-height) - var(--top-bar-height) - var(--bottom-bar-height));
         }
         .menu-panel {
           position: fixed;
