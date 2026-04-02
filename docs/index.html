@@ -85,12 +85,58 @@
       .reader-panel {
         margin-top: 1rem;
       }
+      .view-switcher {
+        display: flex;
+        gap: 0.4rem;
+        margin-bottom: 1rem;
+      }
+      .view-tab {
+        all: unset;
+        padding: 0.5rem 1rem;
+        border: 1px solid #334155;
+        border-radius: 6px;
+        cursor: pointer;
+        background: #0f172a;
+        color: #9ca3af;
+      }
+      .view-tab.active {
+        background: #1d4ed8;
+        color: #fff;
+        border-color: #1d4ed8;
+      }
       .reader-controls {
         display: flex;
         gap: 0.5rem;
         align-items: center;
         flex-wrap: wrap;
         margin-bottom: 0.6rem;
+      }
+      .queue-list {
+        margin: 0;
+        padding-left: 0;
+        list-style: none;
+      }
+      .queue-item {
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        border: 1px solid #334155;
+        border-radius: 6px;
+        background: #0f172a;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .queue-item:hover {
+        background: #1e293b;
+        border-color: #475569;
+      }
+      .queue-item-section {
+        font-weight: 500;
+        color: #e5e7eb;
+        margin-bottom: 0.25rem;
+      }
+      .queue-item-meta {
+        font-size: 0.82rem;
+        color: #9ca3af;
       }
       #reader-frame {
         width: 100%;
@@ -104,9 +150,14 @@
   <body>
     <main>
       <h1>GoBooks Reader PWA</h1>
-      <p>Step 6: import EPUB, manage bookshelf, read chapters, hide answers, and schedule SRS items per section.</p>
+      <p>Step 7: review queue for items due today, with SM-2 rating in reader context.</p>
       <p id="sw-status">Service worker: checking…</p>
       <p id="app-status">Initializing…</p>
+
+      <div class="view-switcher">
+        <button id="view-bookshelf" class="view-tab active">Bookshelf</button>
+        <button id="view-queue" class="view-tab">Review queue</button>
+      </div>
 
       <section class="panel" style="margin-bottom: 1rem;">
         <h2 style="margin-top: 0;">Import EPUB</h2>
@@ -116,7 +167,7 @@
         </div>
       </section>
 
-      <section class="grid">
+      <section id="bookshelf-view" class="grid">
         <div class="panel">
           <h2 style="margin-top: 0;">Imported books</h2>
           <ul id="books-list"></ul>
@@ -126,6 +177,11 @@
           <h2 id="selected-book-title" style="margin-top: 0;">No book selected</h2>
           <ul id="chapter-list"></ul>
         </div>
+      </section>
+
+      <section id="queue-view" class="panel" style="display: none;">
+        <h2 style="margin-top: 0;">Review queue (due today or earlier)</h2>
+        <ul id="review-queue-list" class="queue-list"></ul>
       </section>
 
       <section id="reader-panel" class="panel reader-panel" style="display: none;">

@@ -1,5 +1,6 @@
 import {
   getAllBooks,
+  getAllReviews,
   upsertBook,
   deleteBook,
   upsertReview,
@@ -25,9 +26,15 @@ const readerPrevButtonEl = document.getElementById('reader-prev')
 const readerNextButtonEl = document.getElementById('reader-next')
 const readerCloseButtonEl = document.getElementById('reader-close')
 const readerFrameEl = document.getElementById('reader-frame')
+const viewBookshelfBtn = document.getElementById('view-bookshelf')
+const viewQueueBtn = document.getElementById('view-queue')
+const bookshelfView = document.getElementById('bookshelf-view')
+const queueView = document.getElementById('queue-view')
+const reviewQueueListEl = document.getElementById('review-queue-list')
 
 let books = []
 let selectedBookId = null
+let currentReviewItem = null  // Track which item from queue is being reviewed
 
 const reader = createReaderController({
   rootEl: readerRootEl,
@@ -165,10 +172,6 @@ function makeItemId(bookId, chapterFile, sectionName) {
   return `${bookId}::${chapterFile}::${sectionName}`
 }
 
-/**
- * Handle SRS postMessage events from the chapter iframe.
- * Payload: { type: "srs", sectionName: string, rating: string }
- */
 async function handleSrsMessage(event) {
   if (!event.data || event.data.type !== 'srs') return
 
@@ -205,11 +208,125 @@ async function handleSrsMessage(event) {
       'ok'
     )
   }
+
+  // If this item was opened from the queue, refresh the queue
+  if (currentReviewItem && currentReviewItem.itemId === itemId) {
+    await renderReviewQueue()
+  }
 }
 
 async function refreshBooks() {
   books = await getAllBooks()
   renderBooks()
+}
+
+/**
+ * Render the review queue: all reviews with dueDate <= today (local date).
+ */
+async function renderReviewQueue() {
+  const todayStr = (() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  })()
+
+  const allReviews = await getAllReviews()
+  const dueItems = allReviews.filter(review => review.dueDate <= todayStr)
+
+  reviewQueueListEl.innerHTML = ''
+
+  if (!dueItems.length) {
+    const li = document.createElement('li')
+    li.textContent = 'No items due today. Great work!'
+    li.style.padding = '1rem'
+    li.style.textAlign = 'center'
+    li.style.color = '#9ca3af'
+    reviewQueueListEl.append(li)
+    return
+  }
+
+  // Sort by dueDate ascending (earliest first)
+  dueItems.sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+
+  for (const review of dueItems) {
+    const li = document.createElement('li')
+    li.className = 'queue-item'
+
+    const sectionEl = document.createElement('div')
+    sectionEl.className = 'queue-item-section'
+    sectionEl.textContent = review.sectionName
+
+    const metaEl = document.createElement('div')
+    metaEl.className = 'queue-item-meta'
+    const book = books.find(b => b.id === review.bookId)
+    const bookTitle = book ? book.title : 'Unknown book'
+    metaEl.textContent = `${bookTitle} • ${review.chapterFile} • due ${review.dueDate}`
+
+    li.append(sectionEl, metaEl)
+
+    li.addEventListener('click', async () => {
+      const book = books.find(b => b.id === review.bookId)
+      if (!book) {
+        setStatus('Book not found.', 'warn')
+        return
+      }
+
+      const chapterIndex = book.chapters.findIndex(ch => ch.href === review.chapterFile)
+      if (chapterIndex < 0) {
+        setStatus('Chapter not found.', 'warn')
+        return
+      }
+
+      currentReviewItem = review
+      await reader.openBook(book, chapterIndex)
+      scrollIframeToSection(review.sectionName)
+      setStatus(`Reviewing: "${review.sectionName}" from ${bookTitle}`, 'ok')
+    })
+
+    reviewQueueListEl.append(li)
+  }
+}
+
+function switchView(view) {
+  if (view === 'bookshelf') {
+    bookshelfView.style.display = ''
+    queueView.style.display = 'none'
+    viewBookshelfBtn.classList.add('active')
+    viewQueueBtn.classList.remove('active')
+  } else {
+    bookshelfView.style.display = 'none'
+    queueView.style.display = ''
+    viewBookshelfBtn.classList.remove('active')
+    viewQueueBtn.classList.add('active')
+    renderReviewQueue()
+  }
+}
+
+/**
+ * Scroll the chapter iframe to the first heading matching the section name.
+ * Waits briefly for iframe content to load.
+ */
+async function scrollIframeToSection(sectionName) {
+  // Wait a tick for iframe to load
+  await new Promise(resolve => setTimeout(resolve, 100))
+
+  try {
+    const iframeDoc = readerFrameEl.contentDocument || readerFrameEl.contentWindow?.document
+    if (!iframeDoc) return
+
+    // Find all h2 and h3 headings
+    const headings = Array.from(iframeDoc.querySelectorAll('h2, h3'))
+    const targetHeading = headings.find(h => h.textContent.trim() === sectionName.trim())
+
+    if (targetHeading) {
+      targetHeading.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  } catch (err) {
+    // Cross-origin or other iframe access issues; silently fail
+  }
 }
 
 async function importSelectedEpub() {
@@ -245,6 +362,8 @@ async function init() {
   }
 
   importButtonEl.addEventListener('click', importSelectedEpub)
+  viewBookshelfBtn.addEventListener('click', () => switchView('bookshelf'))
+  viewQueueBtn.addEventListener('click', () => switchView('queue'))
   window.addEventListener('message', handleSrsMessage)
   await refreshBooks()
 }

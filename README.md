@@ -8,9 +8,9 @@ Progressive Web App for reading EPUB books purchased from gobooks.com, with enha
 
 This project is hosted on GitHub Pages and served from the docs folder.
 
-## Current status (through Step 6)
+## Current status (through Step 7)
 
-Completed scaffold files:
+Completed milestone deliverables:
 
 - [docs/index.html](docs/index.html)
 - [docs/manifest.json](docs/manifest.json)
@@ -22,12 +22,15 @@ Completed scaffold files:
 
 Current behavior:
 
-- Basic landing page is served.
-- Service worker registers and reports status on screen.
-- Web app manifest is linked.
-- App shell files are cached for offline use.
-- EPUB import via JSZip works in-browser.
-- Imported EPUB entries are written into OPFS under books/{bookId}/files/...
+- Landing page with view tabs (Bookshelf | Review queue)
+- Service worker registers and reports status
+- EPUB import via JSZip stores files in OPFS
+- Chapter reader with interactive diagram support
+- Answer sections hidden by default with reveal buttons
+- Per-section SRS rating buttons (Mark/Again/Hard/Good/Easy)
+- Review queue shows all items due today or earlier
+- SM-2 scheduling with dynamic due-date updates
+- Data persists across reloads (OPFS + IndexedDB)
 - content.opf is parsed to extract metadata and chapter spine order.
 - Imported books and chapter lists are persisted/shown via Dexie (IndexedDB).
 - Chapter reader loads selected XHTML spine content in a sandboxed iframe.

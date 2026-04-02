@@ -172,23 +172,28 @@ Acceptance checks:
 
 ---
 
-### M7 — Review queue
+### M7 — Review queue (completed)
 
 Deliverables:
 
 - Queue screen: items due today (or earlier)
 - Open item in reader context
 - Rating bar for Again/Hard/Good/Easy after review
+- Tab switcher between Bookshelf and Review queue views
 
 Implementation notes:
 
 - Query by dueDate <= today (local date semantics)
 - Keep review loop keyboard/tap friendly
+- Clicking a queue item opens the chapter and focuses the relevant section
+- Rating updates schedule and removes item from queue (if dueDate advances beyond today)
 
 Acceptance checks:
 
-- Due items appear correctly
-- Rating an item updates schedule and queue membership
+- Due items appear correctly in queue
+- Rating an item updates schedule
+- Queue refreshes after rating
+- Tab switcher works smoothly
 
 ---
 
