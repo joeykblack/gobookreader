@@ -88,6 +88,8 @@ export function createReaderController({
 }) {
   let currentBook = null
   let chapterIndex = 0
+  let pendingHash = ''
+  let selectNavEntries = null
   let activeChapterUrl = null
   const activeAssetUrls = new Set()
 
@@ -117,6 +119,13 @@ export function createReaderController({
     return currentBook?.chapters?.length || 0
   }
 
+  function getChapterIndexForHref(book, href) {
+    const text = String(href || '')
+    const hashIndex = text.indexOf('#')
+    const path = hashIndex >= 0 ? text.slice(0, hashIndex) : text
+    return book?.chapters?.findIndex(ch => ch.href === path) ?? -1
+  }
+
   function updateControls() {
     const count = chapterCount()
     const hasBook = !!currentBook
@@ -136,8 +145,33 @@ export function createReaderController({
 
   function renderSelect() {
     selectEl.innerHTML = ''
+    selectNavEntries = null
 
     if (!currentBook) {
+      return
+    }
+
+    const navItems = Array.isArray(currentBook.navigation) ? currentBook.navigation : []
+    const mappedNav = navItems
+      .map(nav => ({
+        ...nav,
+        chapterIndex: getChapterIndexForHref(currentBook, nav.href),
+      }))
+      .filter(nav => nav.chapterIndex >= 0)
+
+    if (mappedNav.length) {
+      selectNavEntries = mappedNav
+
+      mappedNav.forEach((nav, idx) => {
+        const option = document.createElement('option')
+        option.value = String(idx)
+        const indent = '  '.repeat(Math.max(0, Number(nav.depth || 0)))
+        option.textContent = `${indent}${nav.label}`
+        selectEl.append(option)
+      })
+
+      const selectedNavIdx = mappedNav.findIndex(nav => nav.chapterIndex === chapterIndex)
+      selectEl.value = String(selectedNavIdx >= 0 ? selectedNavIdx : 0)
       return
     }
 
@@ -318,6 +352,32 @@ export function createReaderController({
       const chapterBlob = new Blob([html], { type: chapterType })
       activeChapterUrl = URL.createObjectURL(chapterBlob)
       frameEl.src = activeChapterUrl
+
+      const hashToScroll = pendingHash
+      pendingHash = ''
+
+      if (hashToScroll) {
+        const scrollOnLoad = () => {
+          try {
+            const doc = frameEl.contentDocument || frameEl.contentWindow?.document
+            if (!doc) return
+
+            const anchorId = decodeURIComponent(hashToScroll.replace(/^#/, ''))
+            const target =
+              doc.getElementById(anchorId) ||
+              doc.querySelector(`[name="${CSS.escape(anchorId)}"]`)
+
+            if (target) {
+              target.scrollIntoView({ behavior: 'auto', block: 'start' })
+            }
+          } catch {
+            // Ignore anchor scrolling errors.
+          }
+        }
+
+        frameEl.addEventListener('load', scrollOnLoad, { once: true })
+      }
+
       updateControls()
       setStatus(`Reading: ${currentBook.title} / ${chapter.href}`, 'ok')
     } catch (err) {
@@ -326,7 +386,7 @@ export function createReaderController({
     }
   }
 
-  async function openBook(book, startIndex = 0) {
+  async function openBook(book, startIndex = 0, startHash = '') {
     if (!book?.chapters?.length) {
       setStatus('This book has no readable spine chapters.', 'warn')
       return
@@ -334,6 +394,7 @@ export function createReaderController({
 
     currentBook = book
     chapterIndex = Math.max(0, Math.min(startIndex, book.chapters.length - 1))
+    pendingHash = startHash || ''
 
     setVisible(true)
     renderSelect()
@@ -369,7 +430,18 @@ export function createReaderController({
     if (!currentBook) return
     const requested = Number.parseInt(selectEl.value, 10)
     if (!Number.isFinite(requested)) return
-    chapterIndex = Math.max(0, Math.min(requested, chapterCount() - 1))
+
+    if (selectNavEntries?.length) {
+      const nav = selectNavEntries[requested]
+      if (!nav) return
+      chapterIndex = nav.chapterIndex
+      const hashIndex = String(nav.href || '').indexOf('#')
+      pendingHash = hashIndex >= 0 ? String(nav.href).slice(hashIndex) : ''
+    } else {
+      chapterIndex = Math.max(0, Math.min(requested, chapterCount() - 1))
+      pendingHash = ''
+    }
+
     await renderCurrentChapter()
   })
 

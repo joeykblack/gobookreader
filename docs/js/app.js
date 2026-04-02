@@ -74,6 +74,20 @@ function setStatus(message, kind = '') {
   appStatusEl.className = kind
 }
 
+function splitUrlAndHash(url) {
+  const idx = String(url || '').indexOf('#')
+  if (idx < 0) return { path: String(url || ''), hash: '' }
+  return {
+    path: String(url || '').slice(0, idx),
+    hash: String(url || '').slice(idx)
+  }
+}
+
+function getChapterIndexForHref(book, href) {
+  const { path } = splitUrlAndHash(href)
+  return book.chapters.findIndex(ch => ch.href === path)
+}
+
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) {
     swStatusEl.textContent = 'Service worker: not supported in this browser.'
@@ -99,12 +113,74 @@ function renderChapterList(book) {
     return
   }
 
-  selectedBookTitleEl.textContent = `${book.title} — Chapters`
+  selectedBookTitleEl.textContent = `${book.title} — Navigation`
 
   if (!book.chapters?.length) {
     const li = document.createElement('li')
     li.textContent = 'No spine chapters found in OPF.'
     chapterListEl.append(li)
+    return
+  }
+
+  const navItems = Array.isArray(book.navigation) ? book.navigation : []
+
+  if (navItems.length) {
+    const stack = [{ depth: -1, listEl: chapterListEl, lastLi: null }]
+    let renderedCount = 0
+
+    for (const nav of navItems) {
+      const depth = Math.max(0, Number(nav.depth || 0))
+
+      while (stack.length > depth + 1) {
+        stack.pop()
+      }
+
+      while (stack.length < depth + 1) {
+        const parent = stack[stack.length - 1]
+        if (!parent?.lastLi) break
+
+        let nested = parent.lastLi.querySelector(':scope > ul')
+        if (!nested) {
+          nested = document.createElement('ul')
+          nested.style.marginTop = '0.25rem'
+          nested.style.marginBottom = '0.25rem'
+          nested.style.maxHeight = 'none'
+          nested.style.overflow = 'visible'
+          parent.lastLi.append(nested)
+        }
+
+        stack.push({ depth: stack.length - 1, listEl: nested, lastLi: null })
+      }
+
+      const current = stack[stack.length - 1]
+      const li = document.createElement('li')
+      const openButton = document.createElement('button')
+      openButton.type = 'button'
+      openButton.textContent = nav.label
+
+      const chapterIndex = getChapterIndexForHref(book, nav.href)
+      if (chapterIndex >= 0) {
+        const { hash } = splitUrlAndHash(nav.href)
+        openButton.addEventListener('click', async () => {
+          await reader.openBook(book, chapterIndex, hash)
+        })
+      } else {
+        openButton.disabled = true
+        openButton.title = 'Navigation target not in readable spine'
+      }
+
+      li.append(openButton)
+      current.listEl.append(li)
+      current.lastLi = li
+      renderedCount += 1
+    }
+
+    if (!renderedCount) {
+      const li = document.createElement('li')
+      li.textContent = 'Navigation has no readable chapter targets.'
+      chapterListEl.append(li)
+    }
+
     return
   }
 
