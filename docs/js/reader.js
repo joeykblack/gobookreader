@@ -155,7 +155,7 @@ export function createReaderController({
     }
 
     if (!hasBook) {
-      titleEl.textContent = 'Reader'
+      titleEl.textContent = ''
       if (pageIndicatorEl) {
         pageIndicatorEl.textContent = 'Page 0 of 0'
       }

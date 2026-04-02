@@ -40,8 +40,11 @@ const menuInfoEl = document.getElementById('menu-info')
 const importView = document.getElementById('import-view')
 const bookshelfView = document.getElementById('bookshelf-view')
 const queueView = document.getElementById('queue-view')
+const queueEmptyView = document.getElementById('queue-empty-view')
 const infoView = document.getElementById('info-view')
+const reviewEmptyTextEl = document.getElementById('review-empty-text')
 const reviewQueueSummaryEl = document.getElementById('review-queue-summary')
+const readerFooterControlsEl = document.getElementById('reader-footer-controls')
 const clearAllReviewsBtn = document.getElementById('clear-all-reviews')
 
 const READER_STATE_KEY = 'gorecall.readerState.v1'
@@ -520,14 +523,17 @@ async function renderReviewQueue() {
 
   if (!dueItems.length) {
     reviewQueueSummaryEl.textContent = 'No items due today. Great work!'
+    queueEmptyView.style.display = activeView === 'queue' ? '' : 'none'
     if (activeView === 'queue') {
       currentReviewItem = null
       reader.setViewVisible(false)
+      reviewEmptyTextEl.textContent = 'No items due today. Great work!'
     }
     updateNextReviewButton(dueItems)
     return
   }
 
+  queueEmptyView.style.display = 'none'
   const currentIdx = currentReviewItem
     ? dueItems.findIndex(item => item.itemId === currentReviewItem.itemId)
     : -1
@@ -653,9 +659,16 @@ function switchView(view) {
   activeView = view
   importView.style.display = view === 'import' ? '' : 'none'
   bookshelfView.style.display = view === 'library' ? '' : 'none'
-  queueView.style.display = view === 'queue' ? '' : 'none'
+  queueView.style.display = 'none'
+  queueEmptyView.style.display = 'none'
   infoView.style.display = view === 'info' ? '' : 'none'
   reader.setViewVisible(view === 'read' || view === 'queue')
+  readerFooterControlsEl.style.display = view === 'read' || view === 'queue' ? '' : 'none'
+  reviewQueueSummaryEl.style.display = view === 'queue' ? '' : 'none'
+
+  if (view !== 'queue') {
+    reviewQueueSummaryEl.textContent = ''
+  }
 
   for (const [menuView, el] of Object.entries(menuItemsByView)) {
     el.classList.toggle('active', menuView === view)
