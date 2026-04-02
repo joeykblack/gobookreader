@@ -55,7 +55,6 @@
         box-sizing: border-box;
       }
       .app-header .bar-inner {
-        min-height: var(--top-bar-height);
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -102,6 +101,7 @@
       .reader-shell {
         width: min(var(--reader-max), 100%);
         margin: 0 auto;
+        height: calc(100dvh - var(--top-bar-height) - var(--bottom-bar-height));
       }
       .reader-mode .reader-shell {
         width: min(var(--reader-max), 100%);
@@ -363,11 +363,12 @@
       .due-later    { background: #14532d; color: #86efac; }
       #reader-frame {
         width: 100%;
-        height: calc(100dvh - var(--top-bar-height) - var(--bottom-bar-height));
+        height: 100%;
         border: 1px solid #334155;
         border-radius: 8px;
         background: #fff;
         box-sizing: border-box;
+        display: block;
       }
       @media (max-width: 640px) {
         main {
@@ -381,6 +382,7 @@
           width: 100%;
           max-width: none;
           margin: 0;
+          height: calc(100dvh - var(--top-bar-height) - var(--bottom-bar-height));
         }
         .menu-panel {
           position: fixed;
@@ -421,7 +423,7 @@
           flex: 1 1 auto;
         }
         #reader-frame {
-          height: calc(100dvh - var(--top-bar-height) - var(--bottom-bar-height));
+          height: 100%;
           border-left: 0;
           border-right: 0;
           border-radius: 0;
@@ -430,7 +432,7 @@
     </style>
   </head>
   <body>
-    <header class="app-header">
+    <header id="app-header" class="app-header">
       <div class="bar-inner">
         <div class="bar-title-wrap">
           <div class="bar-title">GoBooks Reader</div>
@@ -494,7 +496,7 @@
       </section>
     </main>
 
-    <footer class="app-footer">
+    <footer id="app-footer" class="app-footer">
       <div class="bar-inner">
         <div id="review-queue-summary" class="footer-summary"></div>
         <div id="reader-footer-controls" class="footer-nav-row">

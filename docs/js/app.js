@@ -29,6 +29,8 @@ const readerNextButtonEl = document.getElementById('reader-next')
 const readerContentsButtonEl = document.getElementById('reader-contents')
 const readerNextReviewButtonEl = document.getElementById('reader-next-review')
 const readerFrameEl = document.getElementById('reader-frame')
+const appHeaderEl = document.getElementById('app-header')
+const appFooterEl = document.getElementById('app-footer')
 const menuToggleEl = document.getElementById('menu-toggle')
 const menuBackdropEl = document.getElementById('menu-backdrop')
 const appMenuEl = document.getElementById('app-menu')
@@ -143,6 +145,19 @@ function openMenu() {
 function toggleMenu() {
   if (appMenuEl.hidden) openMenu()
   else closeMenu()
+}
+
+function updateLayoutMetrics() {
+  const root = document.documentElement
+  const topHeight = Math.ceil(appHeaderEl?.getBoundingClientRect().height || 0)
+  const bottomHeight = Math.ceil(appFooterEl?.getBoundingClientRect().height || 0)
+
+  if (topHeight > 0) {
+    root.style.setProperty('--top-bar-height', `${topHeight}px`)
+  }
+  if (bottomHeight > 0) {
+    root.style.setProperty('--bottom-bar-height', `${bottomHeight}px`)
+  }
 }
 
 async function getChapterReviewStates(bookId, chapterFile) {
@@ -528,6 +543,7 @@ function updateNextReviewButton(dueItems = null) {
 
   const items = Array.isArray(dueItems) ? dueItems : []
   readerNextReviewButtonEl.disabled = !visible || items.length === 0
+  updateLayoutMetrics()
 }
 
 /**
@@ -691,6 +707,7 @@ function switchView(view) {
   }
 
   updateNextReviewButton([])
+  updateLayoutMetrics()
   if (view === 'queue') renderReviewQueue()
   if (view === 'info') renderReviewInfo()
 }
@@ -766,6 +783,16 @@ async function importSelectedEpub() {
 
 async function init() {
   await registerServiceWorker()
+
+  updateLayoutMetrics()
+  window.addEventListener('resize', updateLayoutMetrics)
+  window.visualViewport?.addEventListener('resize', updateLayoutMetrics)
+
+  if ('ResizeObserver' in window) {
+    const observer = new ResizeObserver(() => updateLayoutMetrics())
+    if (appHeaderEl) observer.observe(appHeaderEl)
+    if (appFooterEl) observer.observe(appFooterEl)
+  }
 
   if (!isOpfsSupported()) {
     setStatus('OPFS is not supported in this browser. Use a Chromium-based browser.', 'warn')
