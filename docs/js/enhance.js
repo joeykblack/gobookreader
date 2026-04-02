@@ -21,6 +21,15 @@ function isHeadingNode(node) {
   )
 }
 
+function hasMeaningfulSectionContent(node) {
+  if (!node) return false
+  if (node.nodeType === 3) {
+    return Boolean((node.textContent || '').trim())
+  }
+  if (node.nodeType !== 1) return false
+  return !isHeadingNode(node)
+}
+
 const REVEAL_BTN_STYLE = [
   'margin: 1.5em auto',
   'display: block',
@@ -104,14 +113,21 @@ function collectSections(body) {
     const isHeading = isHeadingNode(node)
 
     if (isHeading) {
-      if (current) sections.push(current)
-      current = { name: (node.textContent || '').trim(), lastNode: node }
+      if (current?.hasContent) sections.push(current)
+      current = {
+        name: (node.textContent || '').trim(),
+        lastNode: node,
+        hasContent: false,
+      }
     } else if (current) {
-      current.lastNode = node
+      if (hasMeaningfulSectionContent(node)) {
+        current.lastNode = node
+        current.hasContent = true
+      }
     }
   }
 
-  if (current) sections.push(current)
+  if (current?.hasContent) sections.push(current)
   return sections
 }
 
