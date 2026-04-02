@@ -20,6 +20,13 @@
         --content-max: 980px;
         --reader-max: 1080px;
       }
+      *, *::before, *::after {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        overflow-x: hidden;
+      }
       body {
         margin: 0;
         min-height: var(--app-height);
@@ -103,7 +110,7 @@
         align-items: center;
       }
       .app-section {
-        width: min(var(--content-max), 100%);
+        width: min(var(--content-max), calc(100% - 1rem));
         margin: 0 auto 1rem;
       }
       .reader-shell {
