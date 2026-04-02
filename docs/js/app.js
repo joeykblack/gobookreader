@@ -20,13 +20,12 @@ const appStatusEl = document.getElementById('app-status')
 const importInputEl = document.getElementById('epub-file')
 const importButtonEl = document.getElementById('import-button')
 const booksListEl = document.getElementById('books-list')
-const chapterListEl = document.getElementById('chapter-list')
-const selectedBookTitleEl = document.getElementById('selected-book-title')
 const readerRootEl = document.getElementById('reader-panel')
 const readerTitleEl = document.getElementById('reader-title')
 const readerChapterSelectEl = document.getElementById('reader-chapter-select')
 const readerPrevButtonEl = document.getElementById('reader-prev')
 const readerNextButtonEl = document.getElementById('reader-next')
+const readerContentsButtonEl = document.getElementById('reader-contents')
 const readerCloseButtonEl = document.getElementById('reader-close')
 const readerFrameEl = document.getElementById('reader-frame')
 const viewBookshelfBtn = document.getElementById('view-bookshelf')
@@ -63,6 +62,7 @@ const reader = createReaderController({
   selectEl: readerChapterSelectEl,
   prevButtonEl: readerPrevButtonEl,
   nextButtonEl: readerNextButtonEl,
+  contentsButtonEl: readerContentsButtonEl,
   closeButtonEl: readerCloseButtonEl,
   frameEl: readerFrameEl,
   statusCallback: setStatus,
@@ -105,98 +105,6 @@ async function registerServiceWorker() {
   }
 }
 
-function renderChapterList(book) {
-  chapterListEl.innerHTML = ''
-
-  if (!book) {
-    selectedBookTitleEl.textContent = 'No book selected'
-    return
-  }
-
-  selectedBookTitleEl.textContent = `${book.title} — Navigation`
-
-  if (!book.chapters?.length) {
-    const li = document.createElement('li')
-    li.textContent = 'No spine chapters found in OPF.'
-    chapterListEl.append(li)
-    return
-  }
-
-  const navItems = Array.isArray(book.navigation) ? book.navigation : []
-
-  if (navItems.length) {
-    const stack = [{ depth: -1, listEl: chapterListEl, lastLi: null }]
-    let renderedCount = 0
-
-    for (const nav of navItems) {
-      const depth = Math.max(0, Number(nav.depth || 0))
-
-      while (stack.length > depth + 1) {
-        stack.pop()
-      }
-
-      while (stack.length < depth + 1) {
-        const parent = stack[stack.length - 1]
-        if (!parent?.lastLi) break
-
-        let nested = parent.lastLi.querySelector(':scope > ul')
-        if (!nested) {
-          nested = document.createElement('ul')
-          nested.style.marginTop = '0.25rem'
-          nested.style.marginBottom = '0.25rem'
-          nested.style.maxHeight = 'none'
-          nested.style.overflow = 'visible'
-          parent.lastLi.append(nested)
-        }
-
-        stack.push({ depth: stack.length - 1, listEl: nested, lastLi: null })
-      }
-
-      const current = stack[stack.length - 1]
-      const li = document.createElement('li')
-      const openButton = document.createElement('button')
-      openButton.type = 'button'
-      openButton.textContent = nav.label
-
-      const chapterIndex = getChapterIndexForHref(book, nav.href)
-      if (chapterIndex >= 0) {
-        const { hash } = splitUrlAndHash(nav.href)
-        openButton.addEventListener('click', async () => {
-          await reader.openBook(book, chapterIndex, hash)
-        })
-      } else {
-        openButton.disabled = true
-        openButton.title = 'Navigation target not in readable spine'
-      }
-
-      li.append(openButton)
-      current.listEl.append(li)
-      current.lastLi = li
-      renderedCount += 1
-    }
-
-    if (!renderedCount) {
-      const li = document.createElement('li')
-      li.textContent = 'Navigation has no readable chapter targets.'
-      chapterListEl.append(li)
-    }
-
-    return
-  }
-
-  for (const chapter of book.chapters) {
-    const li = document.createElement('li')
-    const openButton = document.createElement('button')
-    openButton.type = 'button'
-    openButton.textContent = `${chapter.index + 1}. ${chapter.href}`
-    openButton.addEventListener('click', async () => {
-      await reader.openBook(book, chapter.index)
-    })
-    li.append(openButton)
-    chapterListEl.append(li)
-  }
-}
-
 function renderBooks() {
   booksListEl.innerHTML = ''
 
@@ -204,7 +112,6 @@ function renderBooks() {
     const li = document.createElement('li')
     li.textContent = 'No books imported yet.'
     booksListEl.append(li)
-    renderChapterList(null)
     return
   }
 
@@ -218,9 +125,9 @@ function renderBooks() {
     const selectBtn = document.createElement('button')
     selectBtn.type = 'button'
     selectBtn.textContent = `${book.title} (${book.author})`
-    selectBtn.addEventListener('click', () => {
+    selectBtn.addEventListener('click', async () => {
       selectedBookId = book.id
-      renderChapterList(book)
+      await reader.openBook(book, 0)
     })
 
     const deleteBtn = document.createElement('button')
@@ -236,7 +143,6 @@ function renderBooks() {
 
   const selected = books.find(book => book.id === selectedBookId) || books[0]
   selectedBookId = selected.id
-  renderChapterList(selected)
 }
 
 async function deleteSelectedBook(book) {

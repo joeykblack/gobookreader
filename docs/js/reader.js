@@ -81,6 +81,7 @@ export function createReaderController({
   selectEl,
   prevButtonEl,
   nextButtonEl,
+  contentsButtonEl,
   closeButtonEl,
   frameEl,
   statusCallback,
@@ -126,6 +127,14 @@ export function createReaderController({
     return book?.chapters?.findIndex(ch => ch.href === path) ?? -1
   }
 
+  function getContentsChapterIndex(book) {
+    if (!book?.chapters?.length) return -1
+    return book.chapters.findIndex(ch => {
+      const href = String(ch.href || '').toLowerCase()
+      return href.endsWith('contents.xhtml') || href.endsWith('contents.html')
+    })
+  }
+
   function updateControls() {
     const count = chapterCount()
     const hasBook = !!currentBook
@@ -133,6 +142,9 @@ export function createReaderController({
     prevButtonEl.disabled = !hasBook || chapterIndex <= 0
     nextButtonEl.disabled = !hasBook || chapterIndex >= count - 1
     selectEl.disabled = !hasBook || count === 0
+    if (contentsButtonEl) {
+      contentsButtonEl.disabled = !hasBook || getContentsChapterIndex(currentBook) < 0
+    }
 
     if (!hasBook) {
       titleEl.textContent = 'Reader'
@@ -378,6 +390,41 @@ export function createReaderController({
         frameEl.addEventListener('load', scrollOnLoad, { once: true })
       }
 
+      const wireLinksOnLoad = () => {
+        try {
+          const doc = frameEl.contentDocument || frameEl.contentWindow?.document
+          if (!doc || !currentBook) return
+
+          const chapterDir = dirname(chapter.href)
+          const anchors = Array.from(doc.querySelectorAll('a[href]'))
+
+          for (const anchor of anchors) {
+            const href = (anchor.getAttribute('href') || '').trim()
+            if (!href || isExternalUrl(href) || href.startsWith('#')) continue
+
+            const { path, hash } = splitUrlAndHash(href)
+            if (!path) continue
+
+            const resolvedPath = resolvePath(chapterDir, path)
+            const targetIndex = currentBook.chapters.findIndex(ch => ch.href === resolvedPath)
+            if (targetIndex < 0) continue
+
+            anchor.addEventListener('click', async event => {
+              event.preventDefault()
+
+              chapterIndex = targetIndex
+              pendingHash = hash || ''
+              renderSelect()
+              await renderCurrentChapter()
+            })
+          }
+        } catch {
+          // Ignore iframe link wiring errors.
+        }
+      }
+
+      frameEl.addEventListener('load', wireLinksOnLoad, { once: true })
+
       updateControls()
       setStatus(`Reading: ${currentBook.title} / ${chapter.href}`, 'ok')
     } catch (err) {
@@ -425,6 +472,19 @@ export function createReaderController({
     selectEl.value = String(chapterIndex)
     await renderCurrentChapter()
   })
+
+  if (contentsButtonEl) {
+    contentsButtonEl.addEventListener('click', async () => {
+      if (!currentBook) return
+      const contentsIndex = getContentsChapterIndex(currentBook)
+      if (contentsIndex < 0) return
+
+      chapterIndex = contentsIndex
+      pendingHash = ''
+      renderSelect()
+      await renderCurrentChapter()
+    })
+  }
 
   selectEl.addEventListener('change', async () => {
     if (!currentBook) return
