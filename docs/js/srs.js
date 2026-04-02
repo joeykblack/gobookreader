@@ -7,14 +7,6 @@ function toLocalDateStart(dateLike = new Date()) {
   return d
 }
 
-function toIsoDate(dateLike = new Date()) {
-  const d = toLocalDateStart(dateLike)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
 function addDays(dateLike, days) {
   const d = toLocalDateStart(dateLike)
   d.setDate(d.getDate() + days)
@@ -42,7 +34,7 @@ export function createReviewItem({ itemId, bookId, chapterFile, sectionName = ''
     intervalDays: 0,
     repetitions: 0,
     lapses: 0,
-    dueDate: toIsoDate(new Date()),
+    dueDate: new Date().toISOString(),
     lastReviewedAt: null,
     lastRating: null
   }
@@ -79,7 +71,7 @@ export function applySm2Rating(review, rating, now = new Date()) {
   easeFactor = easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
   easeFactor = Math.max(MIN_EASE_FACTOR, Number(easeFactor.toFixed(2)))
 
-  const dueDate = toIsoDate(addDays(now, intervalDays))
+  const dueDate = addDays(now, intervalDays).toISOString()
 
   return {
     ...review,

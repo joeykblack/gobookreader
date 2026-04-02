@@ -517,6 +517,22 @@ function localDateStr(dateLike = new Date()) {
   return `${y}-${m}-${day}`
 }
 
+function parseDueDateTime(value) {
+  if (!value) return null
+  const parsed = new Date(value)
+  if (!Number.isNaN(parsed.getTime())) return parsed
+
+  const asDateOnly = new Date(`${value}T00:00:00`)
+  if (!Number.isNaN(asDateOnly.getTime())) return asDateOnly
+
+  return null
+}
+
+function toDueSortValue(value) {
+  const d = parseDueDateTime(value)
+  return d ? d.getTime() : Number.POSITIVE_INFINITY
+}
+
 const BUCKETS = [
   { key: 'overdue',  label: 'Overdue',   color: '#ef4444' },
   { key: 'today',    label: 'Today',      color: '#f97316' },
@@ -527,8 +543,12 @@ const BUCKETS = [
 
 function daysDiff(dueDateStr, todayStr) {
   const [ty, tm, td] = todayStr.split('-').map(Number)
-  const [dy, dm, dd] = dueDateStr.split('-').map(Number)
-  return Math.round((new Date(dy, dm - 1, dd) - new Date(ty, tm - 1, td)) / 86400000)
+  const due = parseDueDateTime(dueDateStr)
+  if (!due) return 9999
+
+  const dueStart = new Date(due)
+  dueStart.setHours(0, 0, 0, 0)
+  return Math.round((dueStart - new Date(ty, tm - 1, td)) / 86400000)
 }
 
 function getBucket(dueDateStr, todayStr) {
@@ -548,8 +568,20 @@ function dueBadgeInfo(dueDateStr, todayStr) {
   else if (diff === 0) text = 'Today'
   else if (diff === 1) text = 'Tomorrow'
   else if (diff <= 6) text = `In ${diff} days`
-  else text = dueDateStr
+  else text = localDateStr(parseDueDateTime(dueDateStr) || new Date())
   return { text, cssClass: 'due-' + bucket.key }
+}
+
+function formatDueDateTime(value) {
+  const due = parseDueDateTime(value)
+  if (!due) return 'Unknown'
+  return due.toLocaleString([], {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  })
 }
 
 function isSameLocalDate(isoString, todayStr) {
@@ -558,12 +590,12 @@ function isSameLocalDate(isoString, todayStr) {
 }
 
 async function getDueReviews() {
-  const todayStr = localDateStr()
+  const now = Date.now()
   const allReviews = await getAllReviews()
   return allReviews
-    .filter(review => review.dueDate <= todayStr)
+    .filter(review => toDueSortValue(review.dueDate) <= now)
     .sort((a, b) => (
-      a.dueDate.localeCompare(b.dueDate) ||
+      toDueSortValue(a.dueDate) - toDueSortValue(b.dueDate) ||
       a.bookId.localeCompare(b.bookId) ||
       a.chapterFile.localeCompare(b.chapterFile) ||
       a.sectionName.localeCompare(b.sectionName)
@@ -722,7 +754,7 @@ async function renderReviewInfo() {
     return
   }
 
-  allReviews.sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+  allReviews.sort((a, b) => toDueSortValue(a.dueDate) - toDueSortValue(b.dueDate))
 
   for (const review of allReviews) {
     const li = document.createElement('li')
@@ -739,7 +771,7 @@ async function renderReviewInfo() {
     const metaEl = document.createElement('div')
     metaEl.className = 'info-item-meta'
     const book = books.find(b => b.id === review.bookId)
-    metaEl.textContent = `${book ? book.title : 'Unknown book'} • ${review.chapterFile}`
+    metaEl.textContent = `${book ? book.title : 'Unknown book'} • Due ${formatDueDateTime(review.dueDate)}`
 
     body.append(sectionEl, metaEl)
 
