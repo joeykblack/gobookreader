@@ -576,8 +576,7 @@ async function renderReviewQueue() {
     : -1
   const activeItem = currentIdx >= 0 ? dueItems[currentIdx] : dueItems[0]
   const activeNumber = Math.max(0, currentIdx) + 1 || 1
-  const activeBook = books.find(b => b.id === activeItem.bookId)
-  reviewQueueSummaryEl.textContent = `Reviewing ${activeNumber} of ${dueItems.length}: ${activeBook ? activeBook.title : 'Unknown book'} • ${activeItem.sectionName}`
+  reviewQueueSummaryEl.textContent = `Reviewing ${activeNumber} of ${dueItems.length}`
 
   if (activeView === 'queue') {
     reader.setViewVisible(true)
@@ -694,6 +693,7 @@ async function renderReviewInfo() {
 
 function switchView(view) {
   activeView = view
+  document.body.classList.toggle('review-mode', view === 'queue')
   importView.style.display = view === 'import' ? '' : 'none'
   bookshelfView.style.display = view === 'library' ? '' : 'none'
   queueView.style.display = 'none'
