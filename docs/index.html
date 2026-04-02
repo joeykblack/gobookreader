@@ -55,8 +55,10 @@
         border-top: 1px solid #334155;
       }
       .bar-inner {
-        width: min(var(--reader-max), calc(100% - 1.5rem));
+        width: 100%;
+        max-width: var(--reader-max);
         margin: 0 auto;
+        padding-inline: 0.75rem;
         box-sizing: border-box;
       }
       .app-header .bar-inner {
@@ -68,6 +70,7 @@
       }
       .bar-title-wrap {
         min-width: 0;
+        flex: 1 1 auto;
       }
       .bar-title {
         font-size: 1.25rem;
@@ -175,6 +178,7 @@
       .menu-wrap {
         position: relative;
         flex-shrink: 0;
+        margin-left: 0.5rem;
       }
       .menu-button {
         display: inline-flex;
@@ -411,7 +415,7 @@
           padding: var(--top-bar-height) 0 var(--bottom-bar-height);
         }
         .bar-inner {
-          width: calc(100% - 1rem);
+          padding-inline: 0.5rem;
         }
         .reader-shell {
           left: 0;
