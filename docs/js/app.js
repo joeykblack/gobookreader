@@ -1,6 +1,7 @@
 import {
   getAllBooks,
   getAllReviews,
+  getReviewsForChapter,
   upsertBook,
   deleteBook,
   upsertReview,
@@ -42,6 +43,20 @@ let selectedBookId = null
 let currentReviewItem = null  // Track which item from queue is being reviewed
 let activeView = 'bookshelf'
 
+async function getChapterReviewStates(bookId, chapterFile) {
+  const reviews = await getReviewsForChapter(bookId, chapterFile)
+  const states = new Map()
+
+  for (const review of reviews) {
+    const stored = review.lastRating || (!review.lastReviewedAt ? 'Mark' : '')
+    if (review.sectionName && stored) {
+      states.set(review.sectionName, stored)
+    }
+  }
+
+  return states
+}
+
 const reader = createReaderController({
   rootEl: readerRootEl,
   titleEl: readerTitleEl,
@@ -50,7 +65,8 @@ const reader = createReaderController({
   nextButtonEl: readerNextButtonEl,
   closeButtonEl: readerCloseButtonEl,
   frameEl: readerFrameEl,
-  statusCallback: setStatus
+  statusCallback: setStatus,
+  reviewStateProvider: getChapterReviewStates
 })
 
 function setStatus(message, kind = '') {
@@ -204,7 +220,10 @@ async function handleSrsMessage(event) {
   }
 
   if (rating === 'Mark') {
-    await upsertReview(review)
+    await upsertReview({
+      ...review,
+      lastRating: 'Mark'
+    })
     setStatus(`Marked "${sectionName}" for review. Due ${review.dueDate}.`, 'ok')
   } else {
     const updated = applySm2Rating(review, rating, new Date())

@@ -83,7 +83,8 @@ export function createReaderController({
   nextButtonEl,
   closeButtonEl,
   frameEl,
-  statusCallback
+  statusCallback,
+  reviewStateProvider
 }) {
   let currentBook = null
   let chapterIndex = 0
@@ -289,8 +290,11 @@ export function createReaderController({
       textEl.setAttribute('dy', '0.30em')
     }
 
-    // Inject answer hiding for GoBooks problem pages.
-    enhanceChapter(doc)
+    // Inject answer hiding and persisted SRS button states for GoBooks problem pages.
+    const reviewStates = reviewStateProvider
+      ? await reviewStateProvider(book.id, chapterPath)
+      : new Map()
+    enhanceChapter(doc, reviewStates)
 
     if (isXhtml) {
       return new XMLSerializer().serializeToString(doc)

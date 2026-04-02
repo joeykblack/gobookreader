@@ -69,14 +69,33 @@ const SRS_BTN_STYLE = [
   'color: #1e293b'
 ].join(';')
 
+const SRS_ACTIVE_STYLE = [
+  'background: #334155',
+  'color: #ffffff',
+  'border-color: #0f172a'
+].join(';')
+
 // Inline onclick uses data-* attributes to avoid quoting/escaping issues.
 const SRS_ONCLICK =
+  'this.parentNode.querySelectorAll("button[data-rating]").forEach(function(btn){' +
+  'btn.style.background="#f8fafc";' +
+  'btn.style.color="#1e293b";' +
+  'btn.style.borderColor="#cbd5e1";' +
+  '});' +
+  'this.style.background="#334155";' +
+  'this.style.color="#ffffff";' +
+  'this.style.borderColor="#0f172a";' +
   'window.parent.postMessage(' +
   '{type:"srs",sectionName:this.dataset.section,rating:this.dataset.rating},' +
   '"*")'
 
+function normalizeStoredRating(value) {
+  const rating = String(value || '').trim()
+  return ['Mark', 'Again', 'Hard', 'Good', 'Easy'].includes(rating) ? rating : ''
+}
+
 /** Build the SRS button group for a given section name. */
-function makeSrsButtonGroup(doc, sectionName) {
+function makeSrsButtonGroup(doc, sectionName, activeRating = '') {
   const container = doc.createElement('div')
   container.className = 'gb-srs-controls'
   container.setAttribute('style', SRS_CONTAINER_STYLE)
@@ -92,7 +111,10 @@ function makeSrsButtonGroup(doc, sectionName) {
     btn.setAttribute('data-section', sectionName)
     btn.setAttribute('data-rating', rating)
     btn.setAttribute('onclick', SRS_ONCLICK)
-    btn.setAttribute('style', SRS_BTN_STYLE)
+    const style = rating === activeRating
+      ? `${SRS_BTN_STYLE};${SRS_ACTIVE_STYLE}`
+      : SRS_BTN_STYLE
+    btn.setAttribute('style', style)
     container.appendChild(btn)
   }
 
@@ -136,7 +158,7 @@ function collectSections(body) {
  * Must run BEFORE injectAnswerHiding so that the bar for an answer section
  * is carried into the hidden wrapper and revealed alongside the answer.
  */
-function injectSrsButtons(doc) {
+function injectSrsButtons(doc, reviewStates = new Map()) {
   const body = doc.body || doc.querySelector('body')
   if (!body) return 0
 
@@ -145,7 +167,8 @@ function injectSrsButtons(doc) {
 
   for (const { name, lastNode } of sections) {
     if (!lastNode.parentNode) continue
-    const bar = makeSrsButtonGroup(doc, name)
+    const activeRating = normalizeStoredRating(reviewStates.get(name))
+    const bar = makeSrsButtonGroup(doc, name, activeRating)
     const next = lastNode.nextSibling
     if (next) {
       lastNode.parentNode.insertBefore(bar, next)
@@ -234,7 +257,7 @@ function injectAnswerHiding(doc) {
  * Main entry point called by reader.js before serialising the chapter to a
  * Blob URL.  Runs SRS injection first, then answer hiding.
  */
-export function enhanceChapter(doc) {
-  injectSrsButtons(doc)
+export function enhanceChapter(doc, reviewStates = new Map()) {
+  injectSrsButtons(doc, reviewStates)
   injectAnswerHiding(doc)
 }

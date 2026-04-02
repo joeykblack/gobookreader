@@ -42,7 +42,8 @@ export function createReviewItem({ itemId, bookId, chapterFile, sectionName = ''
     repetitions: 0,
     lapses: 0,
     dueDate: toIsoDate(new Date()),
-    lastReviewedAt: null
+    lastReviewedAt: null,
+    lastRating: null
   }
 }
 
@@ -86,6 +87,7 @@ export function applySm2Rating(review, rating, now = new Date()) {
     repetitions,
     lapses,
     dueDate,
-    lastReviewedAt: new Date(now).toISOString()
+    lastReviewedAt: new Date(now).toISOString(),
+    lastRating: String(rating)
   }
 }

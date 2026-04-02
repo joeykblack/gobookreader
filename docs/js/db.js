@@ -43,6 +43,14 @@ export async function getAllReviews() {
   return db.reviews.toArray()
 }
 
+export async function getReviewsForChapter(bookId, chapterFile) {
+  return db.reviews
+    .where('bookId')
+    .equals(bookId)
+    .filter(review => review.chapterFile === chapterFile)
+    .toArray()
+}
+
 export async function deleteReviewsForBook(bookId) {
   await db.reviews.where('bookId').equals(bookId).delete()
 }
