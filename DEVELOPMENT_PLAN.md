@@ -142,7 +142,7 @@ Acceptance checks:
 
 ---
 
-### M6 — SRS foundation (SM-2 + DB schema)
+### M6 — SRS foundation (SM-2 + DB schema) (completed)
 
 Deliverables:
 

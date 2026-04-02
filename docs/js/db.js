@@ -10,6 +10,11 @@ db.version(1).stores({
   books: 'id,title,importedAt'
 })
 
+db.version(2).stores({
+  books: 'id,title,importedAt',
+  reviews: 'itemId,bookId,dueDate,lastReviewedAt'
+})
+
 export async function upsertBook(book) {
   await db.books.put(book)
 }
@@ -24,4 +29,20 @@ export async function getBook(bookId) {
 
 export async function deleteBook(bookId) {
   await db.books.delete(bookId)
+}
+
+export async function upsertReview(review) {
+  await db.reviews.put(review)
+}
+
+export async function getReview(itemId) {
+  return db.reviews.get(itemId)
+}
+
+export async function getAllReviews() {
+  return db.reviews.toArray()
+}
+
+export async function deleteReviewsForBook(bookId) {
+  await db.reviews.where('bookId').equals(bookId).delete()
 }

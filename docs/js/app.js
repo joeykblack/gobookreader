@@ -1,7 +1,15 @@
-import { getAllBooks, upsertBook, deleteBook } from './db.js'
+import {
+  getAllBooks,
+  upsertBook,
+  deleteBook,
+  upsertReview,
+  getReview,
+  deleteReviewsForBook
+} from './db.js'
 import { importEpubFile } from './epub.js'
 import { isOpfsSupported, deleteBookFiles } from './opfs.js'
 import { createReaderController } from './reader.js'
+import { createReviewItem, applySm2Rating } from './srs.js'
 
 const swStatusEl = document.getElementById('sw-status')
 const appStatusEl = document.getElementById('app-status')
@@ -139,6 +147,7 @@ async function deleteSelectedBook(book) {
     }
 
     await deleteBookFiles(book.id)
+    await deleteReviewsForBook(book.id)
     await deleteBook(book.id)
 
     if (selectedBookId === book.id) {
@@ -149,6 +158,52 @@ async function deleteSelectedBook(book) {
     setStatus(`Deleted: ${book.title}`, 'ok')
   } catch (err) {
     setStatus(`Delete failed: ${err.message}`, 'warn')
+  }
+}
+
+function makeItemId(bookId, chapterFile, sectionName) {
+  return `${bookId}::${chapterFile}::${sectionName}`
+}
+
+/**
+ * Handle SRS postMessage events from the chapter iframe.
+ * Payload: { type: "srs", sectionName: string, rating: string }
+ */
+async function handleSrsMessage(event) {
+  if (!event.data || event.data.type !== 'srs') return
+
+  const { sectionName, rating } = event.data
+  if (!sectionName || !rating) return
+
+  const location = reader.getCurrentLocation()
+  if (!location) {
+    setStatus('No chapter open for SRS action.', 'warn')
+    return
+  }
+
+  const itemId = makeItemId(location.bookId, location.chapterFile, sectionName)
+  let review = await getReview(itemId)
+
+  if (!review) {
+    review = createReviewItem({
+      itemId,
+      bookId: location.bookId,
+      chapterFile: location.chapterFile,
+      sectionName,
+      positionOffset: 0
+    })
+  }
+
+  if (rating === 'Mark') {
+    await upsertReview(review)
+    setStatus(`Marked "${sectionName}" for review. Due ${review.dueDate}.`, 'ok')
+  } else {
+    const updated = applySm2Rating(review, rating, new Date())
+    await upsertReview(updated)
+    setStatus(
+      `${rating}: "${sectionName}" — due ${updated.dueDate} | ${updated.intervalDays}d | EF ${updated.easeFactor}`,
+      'ok'
+    )
   }
 }
 
@@ -190,6 +245,7 @@ async function init() {
   }
 
   importButtonEl.addEventListener('click', importSelectedEpub)
+  window.addEventListener('message', handleSrsMessage)
   await refreshBooks()
 }
 

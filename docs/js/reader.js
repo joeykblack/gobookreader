@@ -1,5 +1,5 @@
 import { readBookFileBytes, readBookFileText } from './opfs.js'
-import { injectAnswerHiding } from './enhance.js'
+import { enhanceChapter } from './enhance.js'
 
 function dirname(path) {
   const idx = path.lastIndexOf('/')
@@ -290,7 +290,7 @@ export function createReaderController({
     }
 
     // Inject answer hiding for GoBooks problem pages.
-    injectAnswerHiding(doc)
+    enhanceChapter(doc)
 
     if (isXhtml) {
       return new XMLSerializer().serializeToString(doc)
@@ -377,6 +377,17 @@ export function createReaderController({
   return {
     openBook,
     closeReader,
+    getCurrentLocation() {
+      if (!currentBook) return null
+      const chapter = currentBook.chapters[chapterIndex]
+      if (!chapter) return null
+
+      return {
+        bookId: currentBook.id,
+        chapterFile: chapter.href,
+        positionOffset: 0
+      }
+    },
     isOpen(bookId) {
       if (bookId !== undefined) return currentBook?.id === bookId
       return !!currentBook

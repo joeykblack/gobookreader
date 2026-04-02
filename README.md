@@ -8,7 +8,7 @@ Progressive Web App for reading EPUB books purchased from gobooks.com, with enha
 
 This project is hosted on GitHub Pages and served from the docs folder.
 
-## Current status (through Step 5)
+## Current status (through Step 6)
 
 Completed scaffold files:
 
@@ -35,6 +35,8 @@ Current behavior:
 - Chapter assets (CSS/JS/images) are rewritten to Blob URLs so EPUB diagram scripts can run.
 - Books can be deleted from the bookshelf (removes OPFS files + IndexedDB record).
 - Answer sections on GoBooks problem pages are hidden by default behind a "Show Answer" button.
+- SRS review items can be created from the open chapter and rated with Again/Hard/Good/Easy.
+- SM-2 scheduling fields are stored in Dexie (`reviews` table): easeFactor, intervalDays, repetitions, lapses, dueDate, lastReviewedAt.
 
 ## Run locally
 
@@ -51,6 +53,5 @@ Then open **http://localhost:8000** in your browser.
 
 ## Next planned steps
 
-1. SRS (SM-2) data model with Dexie
-2. Review queue UI
-3. Heuristic polish for Kiseido Go books
+1. Review queue UI
+2. Heuristic polish for Kiseido Go books

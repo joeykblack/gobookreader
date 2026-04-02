@@ -4,10 +4,16 @@
  * Operates on a parsed DOM document before it is serialized to a Blob URL.
  * All injected interactivity uses inline event handlers (no external scripts)
  * because the iframe sandbox allows scripts but not module imports.
+ *
+ * Pipeline (order matters):
+ *  1. injectSrsButtons  — appends SRS rating bar at the end of every section.
+ *  2. injectAnswerHiding — wraps answer sections in a hidden div; the SRS bar
+ *     injected in step 1 is carried into the wrapper and revealed with the answer.
  */
 
 const ANSWER_HEADING_RE = /^Answer\b/i
-const BTN_STYLE = [
+
+const REVEAL_BTN_STYLE = [
   'margin: 1.5em auto',
   'display: block',
   'padding: 0.55em 1.8em',
@@ -19,21 +25,131 @@ const BTN_STYLE = [
   'border-radius: 8px'
 ].join(';')
 
+const SRS_CONTAINER_STYLE = [
+  'border-top: 1px solid #d1d5db',
+  'padding-top: 0.55rem',
+  'margin-top: 0.9rem',
+  'display: flex',
+  'gap: 0.35rem',
+  'flex-wrap: wrap',
+  'align-items: center'
+].join(';')
+
+const SRS_LABEL_STYLE = [
+  'font-size: 0.78em',
+  'color: #6b7280',
+  'margin-right: 0.2rem',
+  'user-select: none'
+].join(';')
+
+const SRS_BTN_STYLE = [
+  'padding: 0.28em 0.65em',
+  'font-size: 0.82em',
+  'cursor: pointer',
+  'border: 1px solid #cbd5e1',
+  'border-radius: 6px',
+  'background: #f8fafc',
+  'color: #1e293b'
+].join(';')
+
+// Inline onclick uses data-* attributes to avoid quoting/escaping issues.
+const SRS_ONCLICK =
+  'window.parent.postMessage(' +
+  '{type:"srs",sectionName:this.dataset.section,rating:this.dataset.rating},' +
+  '"*")'
+
+/** Build the SRS button group for a given section name. */
+function makeSrsButtonGroup(doc, sectionName) {
+  const container = doc.createElement('div')
+  container.className = 'gb-srs-controls'
+  container.setAttribute('style', SRS_CONTAINER_STYLE)
+
+  const label = doc.createElement('span')
+  label.textContent = '📖 Review:'
+  label.setAttribute('style', SRS_LABEL_STYLE)
+  container.appendChild(label)
+
+  for (const rating of ['Mark', 'Again', 'Hard', 'Good', 'Easy']) {
+    const btn = doc.createElement('button')
+    btn.textContent = rating
+    btn.setAttribute('data-section', sectionName)
+    btn.setAttribute('data-rating', rating)
+    btn.setAttribute('onclick', SRS_ONCLICK)
+    btn.setAttribute('style', SRS_BTN_STYLE)
+    container.appendChild(btn)
+  }
+
+  return container
+}
+
+/**
+ * Walk the body's direct children to build a list of sections.  A section
+ * begins at every h2 or h3 and runs until (but not including) the next h2/h3.
+ * Content before the first heading is ignored.
+ */
+function collectSections(body) {
+  const sections = []
+  let current = null
+
+  for (const node of body.childNodes) {
+    const isHeading =
+      node.nodeType === 1 &&
+      (node.tagName.toLowerCase() === 'h2' || node.tagName.toLowerCase() === 'h3')
+
+    if (isHeading) {
+      if (current) sections.push(current)
+      current = { name: (node.textContent || '').trim(), lastNode: node }
+    } else if (current) {
+      current.lastNode = node
+    }
+  }
+
+  if (current) sections.push(current)
+  return sections
+}
+
+/**
+ * Inject an SRS button bar after the last node of every section.
+ * Must run BEFORE injectAnswerHiding so that the bar for an answer section
+ * is carried into the hidden wrapper and revealed alongside the answer.
+ */
+function injectSrsButtons(doc) {
+  const body = doc.body || doc.querySelector('body')
+  if (!body) return 0
+
+  const sections = collectSections(body)
+  if (!sections.length) return 0
+
+  for (const { name, lastNode } of sections) {
+    if (!lastNode.parentNode) continue
+    const bar = makeSrsButtonGroup(doc, name)
+    const next = lastNode.nextSibling
+    if (next) {
+      lastNode.parentNode.insertBefore(bar, next)
+    } else {
+      lastNode.parentNode.appendChild(bar)
+    }
+  }
+
+  return sections.length
+}
+
 /**
  * For each `<h3 class="break">Answer …</h3>` in the document, hides the nodes
  * from that heading up to (but not including) the next h2/h3 sibling, then
  * inserts a "Show Answer" button before the hidden section.
  *
+ * Because injectSrsButtons has already run, the SRS bar for the answer section
+ * is included among the collected nodes and will be hidden/revealed with them.
+ *
  * Returns the number of answer sections found and hidden.
  */
-export function injectAnswerHiding(doc) {
+function injectAnswerHiding(doc) {
   const answerHeadings = Array.from(doc.querySelectorAll('h3.break')).filter(el =>
     ANSWER_HEADING_RE.test((el.textContent || '').trim())
   )
 
-  if (!answerHeadings.length) {
-    return 0
-  }
+  if (!answerHeadings.length) return 0
 
   let count = 0
 
@@ -42,7 +158,7 @@ export function injectAnswerHiding(doc) {
     if (!body) return
 
     // Collect nodes from this answer heading up to (not including)
-    // the next h2 or h3 sibling, or end of body.
+    // the next h2/h3 sibling, or end of body.
     const siblings = Array.from(body.childNodes)
     const startIdx = siblings.indexOf(heading)
     if (startIdx < 0) return
@@ -84,11 +200,20 @@ export function injectAnswerHiding(doc) {
       `document.getElementById("${wrapperId}").style.display="";` +
       `this.style.display="none"`
     )
-    btn.setAttribute('style', BTN_STYLE)
+    btn.setAttribute('style', REVEAL_BTN_STYLE)
 
     body.insertBefore(btn, wrapper)
     count++
   })
 
   return count
+}
+
+/**
+ * Main entry point called by reader.js before serialising the chapter to a
+ * Blob URL.  Runs SRS injection first, then answer hiding.
+ */
+export function enhanceChapter(doc) {
+  injectSrsButtons(doc)
+  injectAnswerHiding(doc)
 }
