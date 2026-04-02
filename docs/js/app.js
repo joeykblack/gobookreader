@@ -23,11 +23,11 @@ const booksListEl = document.getElementById('books-list')
 const readerRootEl = document.getElementById('reader-panel')
 const readerTitleEl = document.getElementById('reader-title')
 const readerChapterSelectEl = document.getElementById('reader-chapter-select')
+const readerPageIndicatorEl = document.getElementById('reader-page-indicator')
 const readerPrevButtonEl = document.getElementById('reader-prev')
 const readerNextButtonEl = document.getElementById('reader-next')
 const readerContentsButtonEl = document.getElementById('reader-contents')
 const readerNextReviewButtonEl = document.getElementById('reader-next-review')
-const readerCloseButtonEl = document.getElementById('reader-close')
 const readerFrameEl = document.getElementById('reader-frame')
 const menuToggleEl = document.getElementById('menu-toggle')
 const menuBackdropEl = document.getElementById('menu-backdrop')
@@ -145,10 +145,10 @@ const reader = createReaderController({
   rootEl: readerRootEl,
   titleEl: readerTitleEl,
   selectEl: readerChapterSelectEl,
+  pageIndicatorEl: readerPageIndicatorEl,
   prevButtonEl: readerPrevButtonEl,
   nextButtonEl: readerNextButtonEl,
   contentsButtonEl: readerContentsButtonEl,
-  closeButtonEl: readerCloseButtonEl,
   frameEl: readerFrameEl,
   statusCallback: setStatus,
   reviewStateProvider: getChapterReviewStates,
@@ -534,7 +534,7 @@ async function renderReviewQueue() {
   const activeItem = currentIdx >= 0 ? dueItems[currentIdx] : dueItems[0]
   const activeNumber = Math.max(0, currentIdx) + 1 || 1
   const activeBook = books.find(b => b.id === activeItem.bookId)
-  reviewQueueSummaryEl.textContent = `${dueItems.length} due. Showing ${activeNumber} of ${dueItems.length}: ${activeBook ? activeBook.title : 'Unknown book'} • ${activeItem.sectionName}`
+  reviewQueueSummaryEl.textContent = `Reviewing ${activeNumber} of ${dueItems.length}: ${activeBook ? activeBook.title : 'Unknown book'} • ${activeItem.sectionName}`
 
   if (activeView === 'queue') {
     reader.setViewVisible(true)

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#111827" />
-    <title>GoBooks Reader PWA</title>
+    <title>GoBooks Reader</title>
     <link rel="manifest" href="./manifest.json" />
     <style>
       :root {
@@ -164,6 +164,23 @@
       }
       .reader-spacer {
         margin-left: auto;
+      }
+      .reader-footer {
+        margin-top: 0.6rem;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .page-indicator {
+        grid-column: 2;
+        text-align: center;
+        color: #9ca3af;
+        font-size: 0.9rem;
+      }
+      .reader-next-bottom {
+        grid-column: 3;
+        justify-self: end;
       }
       .queue-summary {
         margin: 0;
@@ -327,6 +344,21 @@
         .reader-controls select {
           width: 100%;
         }
+        .reader-spacer {
+          margin-left: 0;
+        }
+        .reader-footer {
+          grid-template-columns: 1fr;
+        }
+        .page-indicator {
+          grid-column: 1;
+          order: 1;
+        }
+        .reader-next-bottom {
+          grid-column: 1;
+          order: 2;
+          justify-self: stretch;
+        }
       }
     </style>
   </head>
@@ -334,8 +366,7 @@
     <main>
       <div class="topbar">
         <div class="topbar-copy">
-          <h1>GoBooks Reader PWA</h1>
-          <p>Step 7: review queue for items due today, with SM-2 rating in reader context.</p>
+          <h1>GoBooks Reader</h1>
         </div>
         <div class="menu-wrap">
           <button id="menu-toggle" class="menu-button" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="app-menu">☰</button>
@@ -349,8 +380,8 @@
           </div>
         </div>
       </div>
-      <p id="sw-status">Service worker: checking…</p>
-      <p id="app-status">Initializing…</p>
+      <p id="sw-status" style="display:none;"></p>
+      <p id="app-status" style="display:none;"></p>
 
       <section id="import-view" class="panel" style="margin-bottom: 1rem; display: none;">
         <h2 style="margin-top: 0;">Import EPUB</h2>
@@ -368,7 +399,6 @@
       </section>
 
       <section id="queue-view" class="panel" style="display: none;">
-        <h2 style="margin-top: 0;">Review queue</h2>
         <p id="review-queue-summary" class="queue-summary">Loading review queue…</p>
       </section>
 
@@ -385,16 +415,18 @@
         <h2 id="reader-title" style="margin-top: 0;">Reader</h2>
         <div class="reader-controls">
           <button id="reader-prev" type="button">Prev</button>
-          <button id="reader-next" type="button">Next</button>
           <button id="reader-contents" type="button">Contents</button>
           <label>
-            Chapter:
+            Navigate:
             <select id="reader-chapter-select"></select>
           </label>
           <button id="reader-next-review" type="button" class="reader-spacer" style="display: none;">Next review</button>
-          <button id="reader-close" type="button">Close reader</button>
         </div>
         <iframe id="reader-frame" sandbox="allow-scripts allow-same-origin" title="Chapter reader"></iframe>
+        <div class="reader-footer">
+          <div id="reader-page-indicator" class="page-indicator">Page 0 of 0</div>
+          <button id="reader-next" type="button" class="reader-next-bottom">Next</button>
+        </div>
       </section>
     </main>
 

@@ -79,6 +79,7 @@ export function createReaderController({
   rootEl,
   titleEl,
   selectEl,
+  pageIndicatorEl,
   prevButtonEl,
   nextButtonEl,
   contentsButtonEl,
@@ -155,11 +156,16 @@ export function createReaderController({
 
     if (!hasBook) {
       titleEl.textContent = 'Reader'
+      if (pageIndicatorEl) {
+        pageIndicatorEl.textContent = 'Page 0 of 0'
+      }
       return
     }
 
-    const chapter = currentBook.chapters[chapterIndex]
-    titleEl.textContent = `${currentBook.title} — ${chapterIndex + 1}/${count} — ${chapter.href}`
+    titleEl.textContent = currentBook.title
+    if (pageIndicatorEl) {
+      pageIndicatorEl.textContent = `Page ${chapterIndex + 1} of ${count}`
+    }
   }
 
   function renderSelect() {
@@ -519,7 +525,9 @@ export function createReaderController({
     await renderCurrentChapter()
   })
 
-  closeButtonEl.addEventListener('click', closeReader)
+  if (closeButtonEl) {
+    closeButtonEl.addEventListener('click', closeReader)
+  }
 
   setVisible(false)
   updateControls()
