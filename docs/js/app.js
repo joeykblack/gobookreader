@@ -149,20 +149,20 @@ function toggleMenu() {
 
 function updateLayoutMetrics() {
   const root = document.documentElement
-  const viewportHeight = Math.floor(window.visualViewport?.height || window.innerHeight || 0)
-  const viewportTop = Math.floor(window.visualViewport?.offsetTop || 0)
-  const topHeight = Math.ceil(appHeaderEl?.getBoundingClientRect().height || 0)
-  const bottomHeight = Math.ceil(appFooterEl?.getBoundingClientRect().height || 0)
+  const viewportHeight = Number(window.visualViewport?.height || window.innerHeight || 0)
+  const viewportTop = Number(window.visualViewport?.offsetTop || 0)
+  const topHeight = Number(appHeaderEl?.getBoundingClientRect().height || 0)
+  const bottomHeight = Number(appFooterEl?.getBoundingClientRect().height || 0)
 
   if (viewportHeight > 0) {
-    root.style.setProperty('--app-height', `${viewportHeight}px`)
+    root.style.setProperty('--app-height', `${viewportHeight.toFixed(2)}px`)
   }
-  root.style.setProperty('--viewport-top', `${viewportTop}px`)
+  root.style.setProperty('--viewport-top', `${viewportTop.toFixed(2)}px`)
   if (topHeight > 0) {
-    root.style.setProperty('--top-bar-height', `${topHeight}px`)
+    root.style.setProperty('--top-bar-height', `${topHeight.toFixed(2)}px`)
   }
   if (bottomHeight > 0) {
-    root.style.setProperty('--bottom-bar-height', `${bottomHeight}px`)
+    root.style.setProperty('--bottom-bar-height', `${bottomHeight.toFixed(2)}px`)
   }
 }
 

@@ -103,7 +103,7 @@
       .reader-shell {
         position: fixed;
         top: calc(var(--viewport-top) + var(--top-bar-height));
-        height: calc(var(--app-height) - var(--top-bar-height) - var(--bottom-bar-height));
+        bottom: calc(100dvh - (var(--viewport-top) + var(--app-height)) + var(--bottom-bar-height));
         left: 50%;
         transform: translateX(-50%);
         width: min(var(--reader-max), calc(100% - 2rem));
