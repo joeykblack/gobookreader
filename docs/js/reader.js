@@ -85,7 +85,8 @@ export function createReaderController({
   closeButtonEl,
   frameEl,
   statusCallback,
-  reviewStateProvider
+  reviewStateProvider,
+  onLocationChange
 }) {
   let currentBook = null
   let chapterIndex = 0
@@ -427,6 +428,13 @@ export function createReaderController({
 
       updateControls()
       setStatus(`Reading: ${currentBook.title} / ${chapter.href}`, 'ok')
+
+      if (onLocationChange) {
+        onLocationChange({
+          bookId: currentBook.id,
+          chapterFile: chapter.href
+        })
+      }
     } catch (err) {
       frameEl.srcdoc = `<pre style="white-space:pre-wrap;color:#fca5a5;">Failed to render chapter:\n${String(err.message || err)}</pre>`
       setStatus(`Reader error: ${err.message}`, 'warn')

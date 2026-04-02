@@ -37,10 +37,63 @@ const infoView = document.getElementById('info-view')
 const reviewQueueListEl = document.getElementById('review-queue-list')
 const clearAllReviewsBtn = document.getElementById('clear-all-reviews')
 
+const READER_STATE_KEY = 'gorecall.readerState.v1'
+
+function loadReaderState() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(READER_STATE_KEY) || '{}')
+    return {
+      selectedBookId: parsed.selectedBookId || null,
+      books: parsed.books && typeof parsed.books === 'object' ? parsed.books : {}
+    }
+  } catch {
+    return { selectedBookId: null, books: {} }
+  }
+}
+
+let readerState = loadReaderState()
+
+function saveReaderState() {
+  localStorage.setItem(READER_STATE_KEY, JSON.stringify(readerState))
+}
+
+function ensureBookState(bookId) {
+  if (!bookId) return null
+  if (!readerState.books[bookId]) {
+    readerState.books[bookId] = { chapterFile: '', sectionName: '' }
+  }
+  return readerState.books[bookId]
+}
+
+function setSelectedBookId(bookId) {
+  readerState.selectedBookId = bookId || null
+  saveReaderState()
+}
+
+function setBookChapter(bookId, chapterFile) {
+  const state = ensureBookState(bookId)
+  if (!state) return
+  state.chapterFile = chapterFile || ''
+  state.sectionName = ''
+  saveReaderState()
+}
+
+function setBookSection(bookId, sectionName) {
+  const state = ensureBookState(bookId)
+  if (!state) return
+  state.sectionName = sectionName || ''
+  saveReaderState()
+}
+
+function getBookState(bookId) {
+  return readerState.books[bookId] || { chapterFile: '', sectionName: '' }
+}
+
 let books = []
-let selectedBookId = null
+let selectedBookId = readerState.selectedBookId
 let currentReviewItem = null  // Track which item from queue is being reviewed
 let activeView = 'bookshelf'
+let detachSectionTracker = null
 
 async function getChapterReviewStates(bookId, chapterFile) {
   const reviews = await getReviewsForChapter(bookId, chapterFile)
@@ -66,7 +119,12 @@ const reader = createReaderController({
   closeButtonEl: readerCloseButtonEl,
   frameEl: readerFrameEl,
   statusCallback: setStatus,
-  reviewStateProvider: getChapterReviewStates
+  reviewStateProvider: getChapterReviewStates,
+  onLocationChange: ({ bookId, chapterFile }) => {
+    selectedBookId = bookId
+    setSelectedBookId(bookId)
+    setBookChapter(bookId, chapterFile)
+  }
 })
 
 function setStatus(message, kind = '') {
@@ -127,7 +185,8 @@ function renderBooks() {
     selectBtn.textContent = `${book.title} (${book.author})`
     selectBtn.addEventListener('click', async () => {
       selectedBookId = book.id
-      await reader.openBook(book, 0)
+      setSelectedBookId(book.id)
+      await openBookAtSavedPosition(book)
     })
 
     const deleteBtn = document.createElement('button')
@@ -143,6 +202,90 @@ function renderBooks() {
 
   const selected = books.find(book => book.id === selectedBookId) || books[0]
   selectedBookId = selected.id
+  setSelectedBookId(selectedBookId)
+}
+
+async function openBookAtSavedPosition(book) {
+  const persisted = getBookState(book.id)
+  const chapterIndex = book.chapters.findIndex(ch => ch.href === persisted.chapterFile)
+  await reader.openBook(book, chapterIndex >= 0 ? chapterIndex : 0)
+
+  if (persisted.sectionName) {
+    await scrollIframeToSection(persisted.sectionName)
+  }
+}
+
+function findCurrentSectionName(iframeDoc) {
+  const headings = Array.from(iframeDoc.querySelectorAll('h1, h2, h3, h4, h5, h6'))
+    .filter(h => (h.textContent || '').trim())
+
+  if (!headings.length) return ''
+
+  const offset = 96
+  let current = headings[0]
+
+  for (const h of headings) {
+    const top = h.getBoundingClientRect().top
+    if (top - offset <= 0) {
+      current = h
+    } else {
+      break
+    }
+  }
+
+  return (current.textContent || '').trim()
+}
+
+function attachSectionTracking() {
+  readerFrameEl.addEventListener('load', () => {
+    if (detachSectionTracker) {
+      detachSectionTracker()
+      detachSectionTracker = null
+    }
+
+    const iframeDoc = readerFrameEl.contentDocument || readerFrameEl.contentWindow?.document
+    const iframeWin = readerFrameEl.contentWindow
+    if (!iframeDoc || !iframeWin) return
+
+    let timer = null
+    const persistVisibleSection = () => {
+      const location = reader.getCurrentLocation()
+      if (!location) return
+      const sectionName = findCurrentSectionName(iframeDoc)
+      setBookSection(location.bookId, sectionName)
+    }
+
+    const onScroll = () => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        timer = null
+        persistVisibleSection()
+      }, 120)
+    }
+
+    iframeWin.addEventListener('scroll', onScroll, { passive: true })
+
+    const initTimer = setTimeout(() => {
+      persistVisibleSection()
+    }, 140)
+
+    detachSectionTracker = () => {
+      iframeWin.removeEventListener('scroll', onScroll)
+      if (timer) clearTimeout(timer)
+      clearTimeout(initTimer)
+    }
+  })
+}
+
+async function restoreLastReadingPosition() {
+  if (!books.length) return
+
+  const book = books.find(b => b.id === selectedBookId) || books[0]
+  if (!book) return
+
+  selectedBookId = book.id
+  setSelectedBookId(book.id)
+  await openBookAtSavedPosition(book)
 }
 
 async function deleteSelectedBook(book) {
@@ -163,6 +306,7 @@ async function deleteSelectedBook(book) {
 
     if (selectedBookId === book.id) {
       selectedBookId = null
+      setSelectedBookId(null)
     }
 
     await refreshBooks()
@@ -509,7 +653,9 @@ async function init() {
     setStatus('All review items cleared.', 'ok')
   })
   window.addEventListener('message', handleSrsMessage)
+  attachSectionTracking()
   await refreshBooks()
+  await restoreLastReadingPosition()
 }
 
 init()
