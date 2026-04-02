@@ -261,9 +261,6 @@
         gap: 0.5rem;
         justify-content: flex-end;
       }
-      .review-mode .bar-subtitle {
-        display: none;
-      }
       .review-mode .app-footer .bar-inner {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
@@ -556,8 +553,9 @@
     <header id="app-header" class="app-header">
       <div class="bar-inner">
         <div class="bar-title-wrap">
-          <div class="bar-title">GoBooks Reader</div>
-          <div id="reader-title" class="bar-subtitle"></div>
+          <div id="app-main-title" class="bar-title">GoBooks Reader</div>
+          <div id="app-subtitle" class="bar-subtitle"></div>
+          <div id="reader-title" style="display:none;"></div>
         </div>
         <div class="menu-wrap">
           <button id="menu-toggle" class="menu-button" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="app-menu">☰</button>

@@ -21,6 +21,8 @@ const importInputEl = document.getElementById('epub-file')
 const importButtonEl = document.getElementById('import-button')
 const booksListEl = document.getElementById('books-list')
 const readerRootEl = document.getElementById('reader-panel')
+const appMainTitleEl = document.getElementById('app-main-title')
+const appSubtitleEl = document.getElementById('app-subtitle')
 const readerTitleEl = document.getElementById('reader-title')
 const readerChapterSelectEl = document.getElementById('reader-chapter-select')
 const readerPageIndicatorEl = document.getElementById('reader-page-indicator')
@@ -155,6 +157,37 @@ function toggleMenu() {
   else closeMenu()
 }
 
+async function updateTopHeader() {
+  if (activeView !== 'read' && activeView !== 'queue') {
+    appMainTitleEl.textContent = 'GoBooks Reader'
+    appSubtitleEl.textContent = ''
+    return
+  }
+
+  const location = reader.getCurrentLocation()
+  const currentBook = location ? books.find(b => b.id === location.bookId) : null
+
+  if (activeView === 'queue') {
+    appMainTitleEl.textContent = `Reviewing: ${currentBook?.title || 'Unknown book'}`
+    const todayStr = localDateStr()
+    const allReviews = await getAllReviews()
+    const reviewedToday = allReviews.filter(r => isSameLocalDate(r.lastReviewedAt, todayStr)).length
+    appSubtitleEl.textContent = `Reviewed today: ${reviewedToday}`
+    return
+  }
+
+  if (currentBook) {
+    appMainTitleEl.textContent = currentBook.title
+  } else {
+    appMainTitleEl.textContent = 'GoBooks Reader'
+  }
+
+  const todayStr = localDateStr()
+  const allReviews = await getAllReviews()
+  const sectionsToday = allReviews.filter(r => isSameLocalDate(r.createdAt, todayStr)).length
+  appSubtitleEl.textContent = `Sections Today: ${sectionsToday}`
+}
+
 function updateLayoutMetrics() {
   const root = document.documentElement
   const viewportHeight = Number(window.visualViewport?.height || window.innerHeight || 0)
@@ -220,6 +253,7 @@ const reader = createReaderController({
     selectedBookId = bookId
     setSelectedBookId(bookId)
     setBookChapter(bookId, chapterFile)
+    updateTopHeader()
   }
 })
 
@@ -462,6 +496,10 @@ async function handleSrsMessage(event) {
     if (activeView === 'queue') await renderReviewQueue()
     if (activeView === 'info') await renderReviewInfo()
     if (activeView === 'stats') await renderStatsView()
+  }
+
+  if (activeView === 'read' || activeView === 'queue') {
+    await updateTopHeader()
   }
 }
 
@@ -857,6 +895,7 @@ function switchView(view) {
   if (view === 'queue') renderReviewQueue()
   if (view === 'info') renderReviewInfo()
   if (view === 'stats') renderStatsView()
+  updateTopHeader()
 }
 
 async function openCurrentBookForRead() {
