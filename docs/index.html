@@ -138,6 +138,95 @@
         font-size: 0.82rem;
         color: #9ca3af;
       }
+      .chart-wrap {
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-end;
+        height: 110px;
+        margin-bottom: 1.5rem;
+        padding: 0 0.25rem;
+      }
+      .chart-col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.15rem;
+        min-width: 0;
+      }
+      .chart-bar-area {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        height: 72px;
+      }
+      .chart-bar {
+        width: 100%;
+        border-radius: 4px 4px 0 0;
+        min-height: 2px;
+      }
+      .chart-count {
+        font-size: 0.78rem;
+        color: #9ca3af;
+      }
+      .chart-label {
+        font-size: 0.72rem;
+        color: #6b7280;
+        text-align: center;
+        white-space: nowrap;
+      }
+      .info-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .info-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 0.75rem;
+        margin-bottom: 0.4rem;
+        border: 1px solid #334155;
+        border-radius: 6px;
+        background: #0f172a;
+      }
+      .info-item-body {
+        flex: 1;
+        cursor: pointer;
+        min-width: 0;
+      }
+      .info-item-body:hover .info-item-section { color: #93c5fd; }
+      .info-item-section {
+        font-weight: 500;
+        color: #e5e7eb;
+        margin-bottom: 0.15rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .info-item-meta {
+        font-size: 0.8rem;
+        color: #9ca3af;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .due-badge {
+        font-size: 0.72rem;
+        padding: 0.2rem 0.45rem;
+        border-radius: 4px;
+        white-space: nowrap;
+        font-weight: 500;
+        flex-shrink: 0;
+      }
+      .due-overdue  { background: #450a0a; color: #f87171; }
+      .due-today    { background: #431407; color: #fb923c; }
+      .due-tomorrow { background: #422006; color: #fdba74; }
+      .due-week     { background: #1e3a5f; color: #93c5fd; }
+      .due-later    { background: #14532d; color: #86efac; }
       #reader-frame {
         width: 100%;
         height: 70dvh;
@@ -157,6 +246,7 @@
       <div class="view-switcher">
         <button id="view-bookshelf" class="view-tab active">Bookshelf</button>
         <button id="view-queue" class="view-tab">Review queue</button>
+        <button id="view-info" class="view-tab">Review info</button>
       </div>
 
       <section class="panel" style="margin-bottom: 1rem;">
@@ -182,6 +272,15 @@
       <section id="queue-view" class="panel" style="display: none;">
         <h2 style="margin-top: 0;">Review queue (due today or earlier)</h2>
         <ul id="review-queue-list" class="queue-list"></ul>
+      </section>
+
+      <section id="info-view" class="panel" style="display: none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <h2 style="margin: 0;">Review info</h2>
+          <button id="clear-all-reviews" type="button" class="btn-danger">Clear all</button>
+        </div>
+        <div id="review-chart" class="chart-wrap"></div>
+        <ul id="review-info-list" class="info-list"></ul>
       </section>
 
       <section id="reader-panel" class="panel reader-panel" style="display: none;">

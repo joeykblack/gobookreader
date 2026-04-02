@@ -5,6 +5,8 @@ import {
   deleteBook,
   upsertReview,
   getReview,
+  deleteReview,
+  deleteAllReviews,
   deleteReviewsForBook
 } from './db.js'
 import { importEpubFile } from './epub.js'
@@ -28,13 +30,17 @@ const readerCloseButtonEl = document.getElementById('reader-close')
 const readerFrameEl = document.getElementById('reader-frame')
 const viewBookshelfBtn = document.getElementById('view-bookshelf')
 const viewQueueBtn = document.getElementById('view-queue')
+const viewInfoBtn = document.getElementById('view-info')
 const bookshelfView = document.getElementById('bookshelf-view')
 const queueView = document.getElementById('queue-view')
+const infoView = document.getElementById('info-view')
 const reviewQueueListEl = document.getElementById('review-queue-list')
+const clearAllReviewsBtn = document.getElementById('clear-all-reviews')
 
 let books = []
 let selectedBookId = null
 let currentReviewItem = null  // Track which item from queue is being reviewed
+let activeView = 'bookshelf'
 
 const reader = createReaderController({
   rootEl: readerRootEl,
@@ -209,9 +215,10 @@ async function handleSrsMessage(event) {
     )
   }
 
-  // If this item was opened from the queue, refresh the queue
+  // Refresh whichever view is active
   if (currentReviewItem && currentReviewItem.itemId === itemId) {
-    await renderReviewQueue()
+    if (activeView === 'queue') await renderReviewQueue()
+    if (activeView === 'info') await renderReviewInfo()
   }
 }
 
@@ -220,19 +227,68 @@ async function refreshBooks() {
   renderBooks()
 }
 
+function localDateStr(dateLike = new Date()) {
+  const d = new Date(dateLike)
+  d.setHours(0, 0, 0, 0)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+const BUCKETS = [
+  { key: 'overdue',  label: 'Overdue',   color: '#ef4444' },
+  { key: 'today',    label: 'Today',      color: '#f97316' },
+  { key: 'tomorrow', label: 'Tomorrow',   color: '#facc15' },
+  { key: 'week',     label: 'This week',  color: '#60a5fa' },
+  { key: 'later',    label: 'Later',      color: '#4ade80' },
+]
+
+function daysDiff(dueDateStr, todayStr) {
+  const [ty, tm, td] = todayStr.split('-').map(Number)
+  const [dy, dm, dd] = dueDateStr.split('-').map(Number)
+  return Math.round((new Date(dy, dm - 1, dd) - new Date(ty, tm - 1, td)) / 86400000)
+}
+
+function getBucket(dueDateStr, todayStr) {
+  const diff = daysDiff(dueDateStr, todayStr)
+  if (diff < 0) return BUCKETS[0]
+  if (diff === 0) return BUCKETS[1]
+  if (diff === 1) return BUCKETS[2]
+  if (diff <= 6) return BUCKETS[3]
+  return BUCKETS[4]
+}
+
+function dueBadgeInfo(dueDateStr, todayStr) {
+  const diff = daysDiff(dueDateStr, todayStr)
+  const bucket = getBucket(dueDateStr, todayStr)
+  let text
+  if (diff < 0) text = 'Overdue'
+  else if (diff === 0) text = 'Today'
+  else if (diff === 1) text = 'Tomorrow'
+  else if (diff <= 6) text = `In ${diff} days`
+  else text = dueDateStr
+  return { text, cssClass: 'due-' + bucket.key }
+}
+
+async function openReviewItem(review) {
+  const book = books.find(b => b.id === review.bookId)
+  if (!book) { setStatus('Book not found.', 'warn'); return }
+
+  const chapterIndex = book.chapters.findIndex(ch => ch.href === review.chapterFile)
+  if (chapterIndex < 0) { setStatus('Chapter not found.', 'warn'); return }
+
+  currentReviewItem = review
+  await reader.openBook(book, chapterIndex)
+  scrollIframeToSection(review.sectionName)
+  setStatus(`Reviewing: "${review.sectionName}" from ${book.title}`, 'ok')
+}
+
 /**
  * Render the review queue: all reviews with dueDate <= today (local date).
  */
 async function renderReviewQueue() {
-  const todayStr = (() => {
-    const d = new Date()
-    d.setHours(0, 0, 0, 0)
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${day}`
-  })()
-
+  const todayStr = localDateStr()
   const allReviews = await getAllReviews()
   const dueItems = allReviews.filter(review => review.dueDate <= todayStr)
 
@@ -248,7 +304,6 @@ async function renderReviewQueue() {
     return
   }
 
-  // Sort by dueDate ascending (earliest first)
   dueItems.sort((a, b) => a.dueDate.localeCompare(b.dueDate))
 
   for (const review of dueItems) {
@@ -266,43 +321,124 @@ async function renderReviewQueue() {
     metaEl.textContent = `${bookTitle} • ${review.chapterFile} • due ${review.dueDate}`
 
     li.append(sectionEl, metaEl)
-
-    li.addEventListener('click', async () => {
-      const book = books.find(b => b.id === review.bookId)
-      if (!book) {
-        setStatus('Book not found.', 'warn')
-        return
-      }
-
-      const chapterIndex = book.chapters.findIndex(ch => ch.href === review.chapterFile)
-      if (chapterIndex < 0) {
-        setStatus('Chapter not found.', 'warn')
-        return
-      }
-
-      currentReviewItem = review
-      await reader.openBook(book, chapterIndex)
-      scrollIframeToSection(review.sectionName)
-      setStatus(`Reviewing: "${review.sectionName}" from ${bookTitle}`, 'ok')
-    })
-
+    li.addEventListener('click', () => openReviewItem(review))
     reviewQueueListEl.append(li)
   }
 }
 
-function switchView(view) {
-  if (view === 'bookshelf') {
-    bookshelfView.style.display = ''
-    queueView.style.display = 'none'
-    viewBookshelfBtn.classList.add('active')
-    viewQueueBtn.classList.remove('active')
-  } else {
-    bookshelfView.style.display = 'none'
-    queueView.style.display = ''
-    viewBookshelfBtn.classList.remove('active')
-    viewQueueBtn.classList.add('active')
-    renderReviewQueue()
+/**
+ * Render the review info view: bar chart of all items by due bucket + full list.
+ */
+async function renderReviewInfo() {
+  const todayStr = localDateStr()
+  const allReviews = await getAllReviews()
+
+  // --- Chart ---
+  const reviewChartEl = document.getElementById('review-chart')
+  reviewChartEl.innerHTML = ''
+
+  const counts = Object.fromEntries(BUCKETS.map(b => [b.key, 0]))
+  for (const r of allReviews) counts[getBucket(r.dueDate, todayStr).key]++
+
+  const maxCount = Math.max(1, ...Object.values(counts))
+
+  for (const bucket of BUCKETS) {
+    const count = counts[bucket.key]
+    const heightPct = Math.round((count / maxCount) * 100)
+
+    const col = document.createElement('div')
+    col.className = 'chart-col'
+
+    const countEl = document.createElement('div')
+    countEl.className = 'chart-count'
+    countEl.textContent = count
+
+    const barArea = document.createElement('div')
+    barArea.className = 'chart-bar-area'
+
+    const bar = document.createElement('div')
+    bar.className = 'chart-bar'
+    bar.style.height = `${heightPct}%`
+    bar.style.background = bucket.color
+    if (count === 0) bar.style.opacity = '0.2'
+
+    barArea.appendChild(bar)
+
+    const label = document.createElement('div')
+    label.className = 'chart-label'
+    label.textContent = bucket.label
+
+    col.append(countEl, barArea, label)
+    reviewChartEl.appendChild(col)
   }
+
+  // --- List ---
+  const infoListEl = document.getElementById('review-info-list')
+  infoListEl.innerHTML = ''
+
+  if (!allReviews.length) {
+    const li = document.createElement('li')
+    li.textContent = 'No review items yet.'
+    li.style.padding = '1rem'
+    li.style.textAlign = 'center'
+    li.style.color = '#9ca3af'
+    infoListEl.append(li)
+    return
+  }
+
+  allReviews.sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+
+  for (const review of allReviews) {
+    const li = document.createElement('li')
+    li.className = 'info-item'
+
+    const body = document.createElement('div')
+    body.className = 'info-item-body'
+    body.addEventListener('click', () => openReviewItem(review))
+
+    const sectionEl = document.createElement('div')
+    sectionEl.className = 'info-item-section'
+    sectionEl.textContent = review.sectionName
+
+    const metaEl = document.createElement('div')
+    metaEl.className = 'info-item-meta'
+    const book = books.find(b => b.id === review.bookId)
+    metaEl.textContent = `${book ? book.title : 'Unknown book'} • ${review.chapterFile}`
+
+    body.append(sectionEl, metaEl)
+
+    const badge = document.createElement('span')
+    badge.className = 'due-badge'
+    const { text: badgeText, cssClass } = dueBadgeInfo(review.dueDate, todayStr)
+    badge.textContent = badgeText
+    badge.classList.add(cssClass)
+
+    const removeBtn = document.createElement('button')
+    removeBtn.type = 'button'
+    removeBtn.textContent = '🗑'
+    removeBtn.title = 'Remove from review'
+    removeBtn.className = 'btn-danger'
+    removeBtn.style.flexShrink = '0'
+    removeBtn.addEventListener('click', async () => {
+      await deleteReview(review.itemId)
+      await renderReviewInfo()
+    })
+
+    li.append(body, badge, removeBtn)
+    infoListEl.append(li)
+  }
+}
+
+function switchView(view) {
+  activeView = view
+  bookshelfView.style.display = view === 'bookshelf' ? '' : 'none'
+  queueView.style.display = view === 'queue' ? '' : 'none'
+  infoView.style.display = view === 'info' ? '' : 'none'
+  viewBookshelfBtn.classList.toggle('active', view === 'bookshelf')
+  viewQueueBtn.classList.toggle('active', view === 'queue')
+  viewInfoBtn.classList.toggle('active', view === 'info')
+  if (view === 'queue') renderReviewQueue()
+  if (view === 'info') renderReviewInfo()
 }
 
 /**
@@ -364,6 +500,13 @@ async function init() {
   importButtonEl.addEventListener('click', importSelectedEpub)
   viewBookshelfBtn.addEventListener('click', () => switchView('bookshelf'))
   viewQueueBtn.addEventListener('click', () => switchView('queue'))
+  viewInfoBtn.addEventListener('click', () => switchView('info'))
+  clearAllReviewsBtn.addEventListener('click', async () => {
+    if (!confirm('Remove all review items? This cannot be undone.')) return
+    await deleteAllReviews()
+    await renderReviewInfo()
+    setStatus('All review items cleared.', 'ok')
+  })
   window.addEventListener('message', handleSrsMessage)
   await refreshBooks()
 }

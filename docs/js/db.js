@@ -46,3 +46,11 @@ export async function getAllReviews() {
 export async function deleteReviewsForBook(bookId) {
   await db.reviews.where('bookId').equals(bookId).delete()
 }
+
+export async function deleteReview(itemId) {
+  await db.reviews.delete(itemId)
+}
+
+export async function deleteAllReviews() {
+  await db.reviews.clear()
+}
