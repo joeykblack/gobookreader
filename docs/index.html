@@ -378,7 +378,7 @@
       }
       @media (max-width: 640px) {
         main {
-          --bottom-bar-height: 176px;
+          --bottom-bar-height: 84px;
           padding: var(--top-bar-height) 0 var(--bottom-bar-height);
         }
         .bar-inner {
@@ -399,35 +399,46 @@
           min-width: 0;
         }
         .reader-controls {
-          align-items: stretch;
-        }
-        .reader-controls > * {
-          flex: 1 1 auto;
+          align-items: center;
+          flex-wrap: nowrap;
+          gap: 0.35rem;
+          min-width: 0;
         }
         .reader-controls label {
-          display: flex;
-          flex-direction: column;
-          gap: 0.3rem;
+          display: block;
+          font-size: 0;
           min-width: 0;
+          flex: 1 1 auto;
         }
         .reader-controls select {
           width: 100%;
-        }
-        .footer-summary {
-          white-space: normal;
+          min-width: 8.5rem;
+          font-size: 0.9rem;
+          padding: 0.4rem 0.45rem;
         }
         .footer-nav-row {
-          grid-template-columns: 1fr;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto auto;
+          gap: 0.35rem;
+          align-items: center;
         }
-        .page-indicator,
-        .reader-actions {
-          justify-self: stretch;
+        .page-indicator {
+          font-size: 0.78rem;
+          min-width: 4.5rem;
+          white-space: nowrap;
         }
         .reader-actions {
-          justify-content: stretch;
+          gap: 0.35rem;
+          flex-wrap: nowrap;
+          justify-content: flex-end;
         }
         .reader-actions > * {
-          flex: 1 1 auto;
+          flex: 0 0 auto;
+        }
+        .reader-controls button,
+        .reader-actions button {
+          padding: 0.4rem 0.55rem;
+          font-size: 0.88rem;
         }
         #reader-frame {
           height: 100%;
