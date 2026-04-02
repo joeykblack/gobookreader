@@ -153,6 +153,10 @@ function updateLayoutMetrics() {
   const viewportTop = Number(window.visualViewport?.offsetTop || 0)
   const topHeight = Number(appHeaderEl?.getBoundingClientRect().height || 0)
   const bottomHeight = Number(appFooterEl?.getBoundingClientRect().height || 0)
+  const headerBottom = Number(appHeaderEl?.getBoundingClientRect().bottom || 0)
+  const footerTop = Number(appFooterEl?.getBoundingClientRect().top || 0)
+  const readerTop = Math.max(0, headerBottom)
+  const readerHeight = Math.max(0, footerTop - readerTop)
 
   if (viewportHeight > 0) {
     root.style.setProperty('--app-height', `${viewportHeight.toFixed(2)}px`)
@@ -164,6 +168,8 @@ function updateLayoutMetrics() {
   if (bottomHeight > 0) {
     root.style.setProperty('--bottom-bar-height', `${bottomHeight.toFixed(2)}px`)
   }
+  root.style.setProperty('--reader-top', `${readerTop.toFixed(2)}px`)
+  root.style.setProperty('--reader-height', `${readerHeight.toFixed(2)}px`)
 }
 
 async function getChapterReviewStates(bookId, chapterFile) {
