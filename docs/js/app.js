@@ -152,12 +152,14 @@ function updateLayoutMetrics() {
   const root = document.documentElement
   const viewportHeight = Number(window.visualViewport?.height || window.innerHeight || 0)
   const viewportTop = Number(window.visualViewport?.offsetTop || 0)
+  const viewportBottom = viewportTop + viewportHeight
   const topHeight = Number(appHeaderEl?.getBoundingClientRect().height || 0)
   const bottomHeight = Number(appFooterEl?.getBoundingClientRect().height || 0)
   const headerBottom = Number(appHeaderEl?.getBoundingClientRect().bottom || 0)
   const footerTop = Number(appFooterEl?.getBoundingClientRect().top || 0)
   const readerTop = Math.max(0, headerBottom)
   const readerHeight = Math.max(0, footerTop - readerTop)
+  const readerBottomOffset = Math.max(0, viewportBottom - footerTop)
 
   if (viewportHeight > 0) {
     root.style.setProperty('--app-height', `${viewportHeight.toFixed(2)}px`)
@@ -171,12 +173,14 @@ function updateLayoutMetrics() {
   }
   root.style.setProperty('--reader-top', `${readerTop.toFixed(2)}px`)
   root.style.setProperty('--reader-height', `${readerHeight.toFixed(2)}px`)
+  root.style.setProperty('--reader-bottom', `${readerBottomOffset.toFixed(2)}px`)
 
   // Force exact reader fit between fixed bars using measured pixels.
   // This avoids Android viewport rounding drift that can leave a visible bottom gap.
   if (readerRootEl) {
     readerRootEl.style.top = `${readerTop.toFixed(2)}px`
-    readerRootEl.style.height = `${Math.max(0, readerHeight + 1).toFixed(2)}px`
+    readerRootEl.style.bottom = `${readerBottomOffset.toFixed(2)}px`
+    readerRootEl.style.height = 'auto'
   }
 }
 
@@ -371,7 +375,6 @@ async function restoreLastReadingPosition() {
 
   selectedBookId = book.id
   setSelectedBookId(book.id)
-  switchView('read')
   await openBookAtSavedPosition(book)
 }
 

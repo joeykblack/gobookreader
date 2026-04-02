@@ -16,6 +16,7 @@
         --bottom-bar-height: 118px;
         --reader-top: 72px;
         --reader-height: calc(100dvh - 72px - 118px);
+        --reader-bottom: 118px;
         --content-max: 980px;
         --reader-max: 1080px;
       }
@@ -105,7 +106,7 @@
       .reader-shell {
         position: fixed;
         top: var(--reader-top);
-        height: var(--reader-height);
+        bottom: var(--reader-bottom);
         left: 50%;
         transform: translateX(-50%);
         width: min(var(--reader-max), calc(100% - 2rem));
