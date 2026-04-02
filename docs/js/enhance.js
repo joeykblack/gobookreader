@@ -12,6 +12,14 @@
  */
 
 const ANSWER_HEADING_RE = /^Answer\b/i
+const HEADING_SELECTOR = 'h1, h2, h3, h4, h5, h6'
+
+function isHeadingNode(node) {
+  return (
+    node?.nodeType === 1 &&
+    /^h[1-6]$/i.test(node.tagName || '')
+  )
+}
 
 const REVEAL_BTN_STYLE = [
   'margin: 1.5em auto',
@@ -83,8 +91,9 @@ function makeSrsButtonGroup(doc, sectionName) {
 }
 
 /**
- * Walk the body's direct children to build a list of sections.  A section
- * begins at every h2 or h3 and runs until (but not including) the next h2/h3.
+ * Walk the body's direct children to build a list of sections. A section
+ * begins at every heading h1-h6 and runs until (but not including) the next
+ * heading h1-h6.
  * Content before the first heading is ignored.
  */
 function collectSections(body) {
@@ -92,9 +101,7 @@ function collectSections(body) {
   let current = null
 
   for (const node of body.childNodes) {
-    const isHeading =
-      node.nodeType === 1 &&
-      (node.tagName.toLowerCase() === 'h2' || node.tagName.toLowerCase() === 'h3')
+    const isHeading = isHeadingNode(node)
 
     if (isHeading) {
       if (current) sections.push(current)
@@ -135,8 +142,9 @@ function injectSrsButtons(doc) {
 }
 
 /**
- * For each `<h3 class="break">Answer …</h3>` in the document, hides the nodes
- * from that heading up to (but not including) the next h2/h3 sibling, then
+ * For each heading with class `break` whose text starts with `Answer`, hides
+ * the nodes from that heading up to (but not including) the next heading
+ * sibling, then
  * inserts a "Show Answer" button before the hidden section.
  *
  * Because injectSrsButtons has already run, the SRS bar for the answer section
@@ -145,7 +153,7 @@ function injectSrsButtons(doc) {
  * Returns the number of answer sections found and hidden.
  */
 function injectAnswerHiding(doc) {
-  const answerHeadings = Array.from(doc.querySelectorAll('h3.break')).filter(el =>
+  const answerHeadings = Array.from(doc.querySelectorAll(`${HEADING_SELECTOR}.break`)).filter(el =>
     ANSWER_HEADING_RE.test((el.textContent || '').trim())
   )
 
@@ -158,7 +166,7 @@ function injectAnswerHiding(doc) {
     if (!body) return
 
     // Collect nodes from this answer heading up to (not including)
-    // the next h2/h3 sibling, or end of body.
+    // the next heading sibling, or end of body.
     const siblings = Array.from(body.childNodes)
     const startIdx = siblings.indexOf(heading)
     if (startIdx < 0) return
@@ -166,11 +174,8 @@ function injectAnswerHiding(doc) {
     const answerNodes = []
     for (let j = startIdx; j < siblings.length; j++) {
       const node = siblings[j]
-      // Stop before the next h2/h3 that comes AFTER our own heading.
-      if (j > startIdx && node.nodeType === 1) {
-        const tag = node.tagName.toLowerCase()
-        if (tag === 'h2' || tag === 'h3') break
-      }
+      // Stop before the next heading that comes AFTER our own heading.
+      if (j > startIdx && isHeadingNode(node)) break
       answerNodes.push(node)
     }
 

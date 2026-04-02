@@ -453,8 +453,8 @@ async function scrollIframeToSection(sectionName) {
     const iframeDoc = readerFrameEl.contentDocument || readerFrameEl.contentWindow?.document
     if (!iframeDoc) return
 
-    // Find all h2 and h3 headings
-    const headings = Array.from(iframeDoc.querySelectorAll('h2, h3'))
+    // Find all heading levels.
+    const headings = Array.from(iframeDoc.querySelectorAll('h1, h2, h3, h4, h5, h6'))
     const targetHeading = headings.find(h => h.textContent.trim() === sectionName.trim())
 
     if (targetHeading) {
