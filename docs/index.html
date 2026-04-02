@@ -25,6 +25,7 @@
         border: 1px solid #334155;
         border-radius: 12px;
         background: #111827;
+        position: relative;
       }
       h1 { margin-top: 0; }
       .ok { color: #86efac; }
@@ -85,24 +86,74 @@
       .reader-panel {
         margin-top: 1rem;
       }
-      .view-switcher {
+      .topbar {
         display: flex;
-        gap: 0.4rem;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
         margin-bottom: 1rem;
       }
-      .view-tab {
-        all: unset;
-        padding: 0.5rem 1rem;
+      .topbar-copy {
+        min-width: 0;
+      }
+      .menu-wrap {
+        position: relative;
+        flex-shrink: 0;
+      }
+      .menu-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
         border: 1px solid #334155;
-        border-radius: 6px;
+        border-radius: 10px;
         cursor: pointer;
         background: #0f172a;
-        color: #9ca3af;
+        color: #e5e7eb;
+        font-size: 1.25rem;
       }
-      .view-tab.active {
+      .menu-button:hover,
+      .menu-button[aria-expanded="true"] {
+        background: #1e293b;
+      }
+      .menu-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(2, 6, 23, 0.45);
+        z-index: 19;
+      }
+      .menu-panel {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        min-width: 220px;
+        padding: 0.35rem;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        background: #0f172a;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+        z-index: 20;
+      }
+      .menu-panel[hidden],
+      .menu-backdrop[hidden] {
+        display: none;
+      }
+      .menu-item {
+        display: block;
+        width: 100%;
+        text-align: left;
+        background: transparent;
+        color: #e5e7eb;
+        border: 0;
+        border-radius: 8px;
+        padding: 0.8rem 0.9rem;
+        font-size: 0.98rem;
+      }
+      .menu-item:hover,
+      .menu-item.active {
         background: #1d4ed8;
         color: #fff;
-        border-color: #1d4ed8;
       }
       .reader-controls {
         display: flex;
@@ -110,6 +161,13 @@
         align-items: center;
         flex-wrap: wrap;
         margin-bottom: 0.6rem;
+      }
+      .reader-spacer {
+        margin-left: auto;
+      }
+      .queue-summary {
+        margin: 0;
+        color: #cbd5e1;
       }
       .queue-list {
         margin: 0;
@@ -234,22 +292,67 @@
         border-radius: 8px;
         background: #fff;
       }
+      @media (max-width: 640px) {
+        body {
+          display: block;
+          background: #0b1020;
+        }
+        main {
+          width: auto;
+          min-height: 100dvh;
+          margin: 0;
+          border-radius: 0;
+          border-left: 0;
+          border-right: 0;
+          padding: 1rem;
+        }
+        .menu-panel {
+          position: fixed;
+          top: 0.75rem;
+          right: 0.75rem;
+          left: 0.75rem;
+          min-width: 0;
+        }
+        .reader-controls {
+          align-items: stretch;
+        }
+        .reader-controls > * {
+          flex: 1 1 auto;
+        }
+        .reader-controls label {
+          display: flex;
+          flex-direction: column;
+          gap: 0.3rem;
+        }
+        .reader-controls select {
+          width: 100%;
+        }
+      }
     </style>
   </head>
   <body>
     <main>
-      <h1>GoBooks Reader PWA</h1>
-      <p>Step 7: review queue for items due today, with SM-2 rating in reader context.</p>
+      <div class="topbar">
+        <div class="topbar-copy">
+          <h1>GoBooks Reader PWA</h1>
+          <p>Step 7: review queue for items due today, with SM-2 rating in reader context.</p>
+        </div>
+        <div class="menu-wrap">
+          <button id="menu-toggle" class="menu-button" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="app-menu">☰</button>
+          <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+          <div id="app-menu" class="menu-panel" role="menu" hidden>
+            <button id="menu-read" class="menu-item" type="button" role="menuitem">Read</button>
+            <button id="menu-review" class="menu-item" type="button" role="menuitem">Review</button>
+            <button id="menu-library" class="menu-item" type="button" role="menuitem">Library</button>
+            <button id="menu-import" class="menu-item" type="button" role="menuitem">Import</button>
+            <button id="menu-info" class="menu-item" type="button" role="menuitem">Review Info</button>
+          </div>
+        </div>
+      </div>
       <p id="sw-status">Service worker: checking…</p>
       <p id="app-status">Initializing…</p>
 
-      <div class="view-switcher">
-        <button id="view-bookshelf" class="view-tab active">Bookshelf</button>
-        <button id="view-queue" class="view-tab">Review queue</button>
-        <button id="view-info" class="view-tab">Review info</button>
-      </div>
-
-      <section class="panel" style="margin-bottom: 1rem;">
+      <section id="import-view" class="panel" style="margin-bottom: 1rem; display: none;">
         <h2 style="margin-top: 0;">Import EPUB</h2>
         <div class="controls">
           <input id="epub-file" type="file" accept=".epub,application/epub+zip" />
@@ -265,8 +368,8 @@
       </section>
 
       <section id="queue-view" class="panel" style="display: none;">
-        <h2 style="margin-top: 0;">Review queue (due today or earlier)</h2>
-        <ul id="review-queue-list" class="queue-list"></ul>
+        <h2 style="margin-top: 0;">Review queue</h2>
+        <p id="review-queue-summary" class="queue-summary">Loading review queue…</p>
       </section>
 
       <section id="info-view" class="panel" style="display: none;">
@@ -288,6 +391,7 @@
             Chapter:
             <select id="reader-chapter-select"></select>
           </label>
+          <button id="reader-next-review" type="button" class="reader-spacer" style="display: none;">Next review</button>
           <button id="reader-close" type="button">Close reader</button>
         </div>
         <iframe id="reader-frame" sandbox="allow-scripts allow-same-origin" title="Chapter reader"></iframe>

@@ -26,15 +26,22 @@ const readerChapterSelectEl = document.getElementById('reader-chapter-select')
 const readerPrevButtonEl = document.getElementById('reader-prev')
 const readerNextButtonEl = document.getElementById('reader-next')
 const readerContentsButtonEl = document.getElementById('reader-contents')
+const readerNextReviewButtonEl = document.getElementById('reader-next-review')
 const readerCloseButtonEl = document.getElementById('reader-close')
 const readerFrameEl = document.getElementById('reader-frame')
-const viewBookshelfBtn = document.getElementById('view-bookshelf')
-const viewQueueBtn = document.getElementById('view-queue')
-const viewInfoBtn = document.getElementById('view-info')
+const menuToggleEl = document.getElementById('menu-toggle')
+const menuBackdropEl = document.getElementById('menu-backdrop')
+const appMenuEl = document.getElementById('app-menu')
+const menuReadEl = document.getElementById('menu-read')
+const menuReviewEl = document.getElementById('menu-review')
+const menuLibraryEl = document.getElementById('menu-library')
+const menuImportEl = document.getElementById('menu-import')
+const menuInfoEl = document.getElementById('menu-info')
+const importView = document.getElementById('import-view')
 const bookshelfView = document.getElementById('bookshelf-view')
 const queueView = document.getElementById('queue-view')
 const infoView = document.getElementById('info-view')
-const reviewQueueListEl = document.getElementById('review-queue-list')
+const reviewQueueSummaryEl = document.getElementById('review-queue-summary')
 const clearAllReviewsBtn = document.getElementById('clear-all-reviews')
 
 const READER_STATE_KEY = 'gorecall.readerState.v1'
@@ -92,8 +99,33 @@ function getBookState(bookId) {
 let books = []
 let selectedBookId = readerState.selectedBookId
 let currentReviewItem = null  // Track which item from queue is being reviewed
-let activeView = 'bookshelf'
+let activeView = 'library'
 let detachSectionTracker = null
+
+const menuItemsByView = {
+  read: menuReadEl,
+  queue: menuReviewEl,
+  library: menuLibraryEl,
+  import: menuImportEl,
+  info: menuInfoEl
+}
+
+function closeMenu() {
+  appMenuEl.hidden = true
+  menuBackdropEl.hidden = true
+  menuToggleEl.setAttribute('aria-expanded', 'false')
+}
+
+function openMenu() {
+  appMenuEl.hidden = false
+  menuBackdropEl.hidden = false
+  menuToggleEl.setAttribute('aria-expanded', 'true')
+}
+
+function toggleMenu() {
+  if (appMenuEl.hidden) openMenu()
+  else closeMenu()
+}
 
 async function getChapterReviewStates(bookId, chapterFile) {
   const reviews = await getReviewsForChapter(bookId, chapterFile)
@@ -186,6 +218,7 @@ function renderBooks() {
     selectBtn.addEventListener('click', async () => {
       selectedBookId = book.id
       setSelectedBookId(book.id)
+      switchView('read')
       await openBookAtSavedPosition(book)
     })
 
@@ -285,6 +318,7 @@ async function restoreLastReadingPosition() {
 
   selectedBookId = book.id
   setSelectedBookId(book.id)
+  switchView('read')
   await openBookAtSavedPosition(book)
 }
 
@@ -416,7 +450,20 @@ function dueBadgeInfo(dueDateStr, todayStr) {
   return { text, cssClass: 'due-' + bucket.key }
 }
 
-async function openReviewItem(review) {
+async function getDueReviews() {
+  const todayStr = localDateStr()
+  const allReviews = await getAllReviews()
+  return allReviews
+    .filter(review => review.dueDate <= todayStr)
+    .sort((a, b) => (
+      a.dueDate.localeCompare(b.dueDate) ||
+      a.bookId.localeCompare(b.bookId) ||
+      a.chapterFile.localeCompare(b.chapterFile) ||
+      a.sectionName.localeCompare(b.sectionName)
+    ))
+}
+
+async function openReviewItem(review, targetView = 'read') {
   const book = books.find(b => b.id === review.bookId)
   if (!book) { setStatus('Book not found.', 'warn'); return }
 
@@ -424,51 +471,79 @@ async function openReviewItem(review) {
   if (chapterIndex < 0) { setStatus('Chapter not found.', 'warn'); return }
 
   currentReviewItem = review
+  selectedBookId = book.id
+  setSelectedBookId(book.id)
+  if (activeView !== targetView) {
+    switchView(targetView)
+  }
   await reader.openBook(book, chapterIndex)
   scrollIframeToSection(review.sectionName)
   setStatus(`Reviewing: "${review.sectionName}" from ${book.title}`, 'ok')
+}
+
+async function goToNextReview() {
+  const dueItems = await getDueReviews()
+
+  if (!dueItems.length) {
+    currentReviewItem = null
+    if (activeView === 'queue') {
+      reader.setViewVisible(false)
+      reviewQueueSummaryEl.textContent = 'No items due today. Great work!'
+    }
+    setStatus('No items due today. Great work!', 'ok')
+    updateNextReviewButton([])
+    return
+  }
+
+  const currentIdx = currentReviewItem
+    ? dueItems.findIndex(item => item.itemId === currentReviewItem.itemId)
+    : -1
+
+  const nextItem = dueItems[(currentIdx + 1 + dueItems.length) % dueItems.length]
+  await openReviewItem(nextItem, 'queue')
+  await renderReviewQueue()
+}
+
+function updateNextReviewButton(dueItems = null) {
+  const visible = activeView === 'queue'
+  readerNextReviewButtonEl.style.display = visible ? '' : 'none'
+
+  const items = Array.isArray(dueItems) ? dueItems : []
+  readerNextReviewButtonEl.disabled = !visible || items.length === 0
 }
 
 /**
  * Render the review queue: all reviews with dueDate <= today (local date).
  */
 async function renderReviewQueue() {
-  const todayStr = localDateStr()
-  const allReviews = await getAllReviews()
-  const dueItems = allReviews.filter(review => review.dueDate <= todayStr)
-
-  reviewQueueListEl.innerHTML = ''
+  const dueItems = await getDueReviews()
 
   if (!dueItems.length) {
-    const li = document.createElement('li')
-    li.textContent = 'No items due today. Great work!'
-    li.style.padding = '1rem'
-    li.style.textAlign = 'center'
-    li.style.color = '#9ca3af'
-    reviewQueueListEl.append(li)
+    reviewQueueSummaryEl.textContent = 'No items due today. Great work!'
+    if (activeView === 'queue') {
+      currentReviewItem = null
+      reader.setViewVisible(false)
+    }
+    updateNextReviewButton(dueItems)
     return
   }
 
-  dueItems.sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+  const currentIdx = currentReviewItem
+    ? dueItems.findIndex(item => item.itemId === currentReviewItem.itemId)
+    : -1
+  const activeItem = currentIdx >= 0 ? dueItems[currentIdx] : dueItems[0]
+  const activeNumber = Math.max(0, currentIdx) + 1 || 1
+  const activeBook = books.find(b => b.id === activeItem.bookId)
+  reviewQueueSummaryEl.textContent = `${dueItems.length} due. Showing ${activeNumber} of ${dueItems.length}: ${activeBook ? activeBook.title : 'Unknown book'} • ${activeItem.sectionName}`
 
-  for (const review of dueItems) {
-    const li = document.createElement('li')
-    li.className = 'queue-item'
-
-    const sectionEl = document.createElement('div')
-    sectionEl.className = 'queue-item-section'
-    sectionEl.textContent = review.sectionName
-
-    const metaEl = document.createElement('div')
-    metaEl.className = 'queue-item-meta'
-    const book = books.find(b => b.id === review.bookId)
-    const bookTitle = book ? book.title : 'Unknown book'
-    metaEl.textContent = `${bookTitle} • ${review.chapterFile} • due ${review.dueDate}`
-
-    li.append(sectionEl, metaEl)
-    li.addEventListener('click', () => openReviewItem(review))
-    reviewQueueListEl.append(li)
+  if (activeView === 'queue') {
+    reader.setViewVisible(true)
+    if (!currentReviewItem || currentReviewItem.itemId !== activeItem.itemId) {
+      await openReviewItem(activeItem, 'queue')
+    }
   }
+
+  updateNextReviewButton(dueItems)
 }
 
 /**
@@ -576,14 +651,38 @@ async function renderReviewInfo() {
 
 function switchView(view) {
   activeView = view
-  bookshelfView.style.display = view === 'bookshelf' ? '' : 'none'
+  importView.style.display = view === 'import' ? '' : 'none'
+  bookshelfView.style.display = view === 'library' ? '' : 'none'
   queueView.style.display = view === 'queue' ? '' : 'none'
   infoView.style.display = view === 'info' ? '' : 'none'
-  viewBookshelfBtn.classList.toggle('active', view === 'bookshelf')
-  viewQueueBtn.classList.toggle('active', view === 'queue')
-  viewInfoBtn.classList.toggle('active', view === 'info')
+  reader.setViewVisible(view === 'read' || view === 'queue')
+
+  for (const [menuView, el] of Object.entries(menuItemsByView)) {
+    el.classList.toggle('active', menuView === view)
+  }
+
+  updateNextReviewButton([])
   if (view === 'queue') renderReviewQueue()
   if (view === 'info') renderReviewInfo()
+}
+
+async function openCurrentBookForRead() {
+  if (reader.isOpen()) {
+    switchView('read')
+    return
+  }
+
+  const book = books.find(b => b.id === selectedBookId) || books[0]
+  if (!book) {
+    switchView('library')
+    setStatus('No book is currently open.', 'warn')
+    return
+  }
+
+  selectedBookId = book.id
+  setSelectedBookId(book.id)
+  switchView('read')
+  await openBookAtSavedPosition(book)
 }
 
 /**
@@ -624,7 +723,10 @@ async function importSelectedEpub() {
     const book = await importEpubFile(file, msg => setStatus(msg))
     await upsertBook(book)
     selectedBookId = book.id
+    setSelectedBookId(book.id)
     await refreshBooks()
+    switchView('read')
+    await openBookAtSavedPosition(book)
     setStatus(`Imported: ${book.title}`, 'ok')
   } catch (err) {
     setStatus(`Import failed: ${err.message}`, 'warn')
@@ -643,9 +745,34 @@ async function init() {
   }
 
   importButtonEl.addEventListener('click', importSelectedEpub)
-  viewBookshelfBtn.addEventListener('click', () => switchView('bookshelf'))
-  viewQueueBtn.addEventListener('click', () => switchView('queue'))
-  viewInfoBtn.addEventListener('click', () => switchView('info'))
+  menuToggleEl.addEventListener('click', toggleMenu)
+  menuBackdropEl.addEventListener('click', closeMenu)
+  menuReadEl.addEventListener('click', async () => {
+    closeMenu()
+    await openCurrentBookForRead()
+  })
+  menuReviewEl.addEventListener('click', () => {
+    closeMenu()
+    switchView('queue')
+  })
+  menuLibraryEl.addEventListener('click', () => {
+    closeMenu()
+    switchView('library')
+  })
+  menuImportEl.addEventListener('click', () => {
+    closeMenu()
+    switchView('import')
+  })
+  menuInfoEl.addEventListener('click', () => {
+    closeMenu()
+    switchView('info')
+  })
+  readerNextReviewButtonEl.addEventListener('click', goToNextReview)
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      closeMenu()
+    }
+  })
   clearAllReviewsBtn.addEventListener('click', async () => {
     if (!confirm('Remove all review items? This cannot be undone.')) return
     await deleteAllReviews()
@@ -654,6 +781,7 @@ async function init() {
   })
   window.addEventListener('message', handleSrsMessage)
   attachSectionTracking()
+  switchView('library')
   await refreshBooks()
   await restoreLastReadingPosition()
 }

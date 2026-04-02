@@ -93,6 +93,7 @@ export function createReaderController({
   let pendingHash = ''
   let selectNavEntries = null
   let activeChapterUrl = null
+  let viewVisible = true
   const activeAssetUrls = new Set()
 
   function setStatus(message, kind = '') {
@@ -114,7 +115,12 @@ export function createReaderController({
   }
 
   function setVisible(visible) {
-    rootEl.style.display = visible ? 'block' : 'none'
+    rootEl.style.display = visible && viewVisible ? 'block' : 'none'
+  }
+
+  function setViewVisible(visible) {
+    viewVisible = !!visible
+    setVisible(!!currentBook)
   }
 
   function chapterCount() {
@@ -521,6 +527,7 @@ export function createReaderController({
   return {
     openBook,
     closeReader,
+    setViewVisible,
     getCurrentLocation() {
       if (!currentBook) return null
       const chapter = currentBook.chapters[chapterIndex]
