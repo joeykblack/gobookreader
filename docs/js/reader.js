@@ -401,13 +401,18 @@ export function createReaderController({
       }
     }
 
-    // Cross-browser SVG text centering fix (Firefox can render move numbers slightly high).
-    const svgNumberTexts = Array.from(doc.querySelectorAll('svg text'))
-    for (const textEl of svgNumberTexts) {
-      const value = (textEl.textContent || '').trim()
-      if (!/^\d+$/.test(value)) continue
+    // Firefox-specific SVG text centering fix.
+    // Applying this globally can push numbers too low on Android Chromium.
+    const ua = String(navigator.userAgent || '').toLowerCase()
+    const isFirefox = ua.includes('firefox')
+    if (isFirefox) {
+      const svgNumberTexts = Array.from(doc.querySelectorAll('svg text'))
+      for (const textEl of svgNumberTexts) {
+        const value = (textEl.textContent || '').trim()
+        if (!/^\d+$/.test(value)) continue
 
-      textEl.setAttribute('dy', '0.30em')
+        textEl.setAttribute('dy', '0.30em')
+      }
     }
 
     // Inject answer hiding and persisted SRS button states for GoBooks problem pages.
