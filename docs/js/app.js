@@ -69,6 +69,7 @@ const readerFooterControlsEl = document.getElementById('reader-footer-controls')
 const clearAllReviewsBtn = document.getElementById('clear-all-reviews')
 const aboutVersionEl = document.getElementById('about-version')
 const settingsFormEl = document.getElementById('settings-form')
+const readerThemeEl = document.getElementById('reader-theme')
 const fsrsSettingsEl = document.getElementById('fsrs-settings')
 const fsrsRetentionEl = document.getElementById('fsrs-retention')
 const fsrsMaxIntervalEl = document.getElementById('fsrs-max-interval')
@@ -80,6 +81,12 @@ const srsPreviewEl = document.getElementById('srs-preview')
 
 const READER_STATE_KEY = 'gorecall.readerState.v1'
 const SRS_SETTINGS_KEY = 'gorecall.srsSettings.v1'
+
+function normalizeReaderTheme(value) {
+  const theme = String(value || '').trim().toLowerCase()
+  if (theme === 'sepia' || theme === 'dim-sepia') return theme
+  return 'sepia'
+}
 
 function defaultSrsSettings() {
   return {
@@ -199,6 +206,10 @@ function setNumericInputValue(el, value) {
 function renderSettingsForm() {
   if (!settingsFormEl) return
 
+  if (readerThemeEl) {
+    readerThemeEl.value = normalizeReaderTheme(readerState.readerTheme)
+  }
+
   setNumericInputValue(fsrsRetentionEl, srsSettings.fsrs.request_retention)
   setNumericInputValue(fsrsMaxIntervalEl, srsSettings.fsrs.maximum_interval)
   fsrsEnableFuzzEl.value = srsSettings.fsrs.enable_fuzz ? 'true' : 'false'
@@ -230,10 +241,11 @@ function loadReaderState() {
     return {
       selectedBookId: parsed.selectedBookId || null,
       activeView: parsed.activeView || 'library',
+      readerTheme: normalizeReaderTheme(parsed.readerTheme),
       books: parsed.books && typeof parsed.books === 'object' ? parsed.books : {}
     }
   } catch {
-    return { selectedBookId: null, activeView: 'library', books: {} }
+    return { selectedBookId: null, activeView: 'library', readerTheme: 'sepia', books: {} }
   }
 }
 
@@ -268,6 +280,11 @@ function setBookSection(bookId, sectionName) {
   const state = ensureBookState(bookId)
   if (!state) return
   state.sectionName = sectionName || ''
+  saveReaderState()
+}
+
+function setReaderTheme(theme) {
+  readerState.readerTheme = normalizeReaderTheme(theme)
   saveReaderState()
 }
 
@@ -411,6 +428,7 @@ const reader = createReaderController({
   nextButtonEl: readerNextButtonEl,
   contentsButtonEl: readerContentsButtonEl,
   frameEl: readerFrameEl,
+  getTheme: () => readerState.readerTheme,
   statusCallback: setStatus,
   reviewStateProvider: getChapterReviewStates,
   onLocationChange: ({ bookId, chapterFile }) => {
@@ -1392,12 +1410,24 @@ async function init() {
     switchView('about')
   })
   settingsFormEl.addEventListener('input', () => {
+    if (readerThemeEl) {
+      const chosenTheme = normalizeReaderTheme(readerThemeEl.value)
+      if (chosenTheme !== readerState.readerTheme) {
+        setReaderTheme(chosenTheme)
+        reader.setTheme(chosenTheme)
+      }
+    }
     if (activeView === 'settings') {
       renderSrsPreview()
     }
   })
   settingsFormEl.addEventListener('submit', event => {
     event.preventDefault()
+    if (readerThemeEl) {
+      const chosenTheme = normalizeReaderTheme(readerThemeEl.value)
+      setReaderTheme(chosenTheme)
+      reader.setTheme(chosenTheme)
+    }
     srsSettings = readSettingsForm()
     saveSrsSettings()
     renderSettingsForm()

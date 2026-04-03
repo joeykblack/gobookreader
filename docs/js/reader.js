@@ -85,6 +85,7 @@ export function createReaderController({
   contentsButtonEl,
   closeButtonEl,
   frameEl,
+  getTheme,
   statusCallback,
   reviewStateProvider,
   onLocationChange
@@ -95,7 +96,67 @@ export function createReaderController({
   let selectNavEntries = null
   let activeChapterUrl = null
   let viewVisible = true
+  let activeTheme = 'light'
   const activeAssetUrls = new Set()
+
+  function normalizeTheme(value) {
+    const theme = String(value || '').trim().toLowerCase()
+    if (theme === 'sepia' || theme === 'dim-sepia') return theme
+    return 'light'
+  }
+
+  function currentTheme() {
+    return normalizeTheme(getTheme ? getTheme() : activeTheme)
+  }
+
+  function injectThemeStyle(doc, theme) {
+    const normalized = normalizeTheme(theme)
+    if (normalized === 'light') return
+
+    const palettes = {
+      sepia: {
+        bg: '#f4ecd8',
+        text: '#3b2f2a',
+        link: '#5b3f2b',
+        codeBg: '#eadfca',
+        border: '#cbbca3'
+      },
+      'dim-sepia': {
+        bg: '#2a241c',
+        text: '#e6dcc9',
+        link: '#d8b98a',
+        codeBg: '#3a3227',
+        border: '#4e4436'
+      }
+    }
+
+    const p = palettes[normalized] || palettes.sepia
+    const style = doc.createElement('style')
+    style.setAttribute('data-gorecall-theme', normalized)
+    style.textContent = `
+      html, body {
+        background: ${p.bg} !important;
+        color: ${p.text} !important;
+      }
+      body, p, li, dt, dd, blockquote, h1, h2, h3, h4, h5, h6, table, td, th, figcaption {
+        color: ${p.text} !important;
+      }
+      a, a:visited {
+        color: ${p.link} !important;
+      }
+      pre, code {
+        background: ${p.codeBg} !important;
+        color: ${p.text} !important;
+      }
+      hr, table, td, th, pre, code, blockquote {
+        border-color: ${p.border} !important;
+      }
+    `
+
+    const head = doc.querySelector('head')
+    if (head) head.append(style)
+    else doc.documentElement?.prepend(style)
+  }
 
   function setStatus(message, kind = '') {
     if (statusCallback) {
@@ -354,6 +415,7 @@ export function createReaderController({
       ? await reviewStateProvider(book.id, chapterPath)
       : new Map()
     enhanceChapter(doc, reviewStates)
+    injectThemeStyle(doc, currentTheme())
 
     if (isXhtml) {
       return new XMLSerializer().serializeToString(doc)
@@ -550,6 +612,12 @@ export function createReaderController({
     isOpen(bookId) {
       if (bookId !== undefined) return currentBook?.id === bookId
       return !!currentBook
+    },
+    async setTheme(theme) {
+      activeTheme = normalizeTheme(theme)
+      if (currentBook) {
+        await renderCurrentChapter()
+      }
     }
   }
 }

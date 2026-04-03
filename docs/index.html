@@ -511,6 +511,11 @@
         font-size: 0.82rem;
         line-height: 1.35;
       }
+      .settings-divider {
+        border: 0;
+        border-top: 1px solid #334155;
+        margin: 0.25rem 0;
+      }
       .settings-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -718,6 +723,20 @@
       <section id="settings-view" class="panel app-section" style="display: none;">
         <h2 style="margin-top: 0; margin-bottom: 0.7rem;">Settings</h2>
         <form id="settings-form" class="settings-form">
+          <div class="settings-row">
+            <label for="reader-theme">Reader theme</label>
+            <select id="reader-theme">
+              <option value="light">Light</option>
+              <option value="sepia">Sepia</option>
+              <option value="dim-sepia">Dim Sepia</option>
+            </select>
+            <div class="settings-help">
+              Sepia and Dim Sepia reduce glare while keeping diagrams readable by avoiding full color inversion.
+            </div>
+          </div>
+
+          <hr class="settings-divider" />
+
           <div class="settings-row">
             <div><strong>Spaced repetition system: FSRS</strong></div>
             <div class="settings-help">
