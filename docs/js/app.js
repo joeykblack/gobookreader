@@ -352,7 +352,14 @@ async function updateTopHeader() {
     appMainTitleEl.textContent = `Reviewing: ${currentBook?.title || 'Unknown book'}`
     const todayStr = localDateStr()
     const reviewEvents = await getAllReviewEvents()
-    const reviewedToday = reviewEvents.filter(r => isSameLocalDate(r.reviewedAt, todayStr)).length
+    const allReviews = await getAllReviews()
+    // Only count reviews of sections that were created before today (not added and reviewed same day)
+    const reviewedToday = reviewEvents.filter(r => {
+      if (!isSameLocalDate(r.reviewedAt, todayStr)) return false
+      const section = allReviews.find(s => s.itemId === r.itemId)
+      if (!section) return false
+      return !isSameLocalDate(section.createdAt, todayStr)
+    }).length
     appSubtitleEl.textContent = `Reviewed today: ${reviewedToday}`
     return
   }
