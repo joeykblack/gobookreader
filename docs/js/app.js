@@ -351,9 +351,9 @@ async function updateTopHeader() {
   if (activeView === 'queue') {
     appMainTitleEl.textContent = `Reviewing: ${currentBook?.title || 'Unknown book'}`
     const todayStr = localDateStr()
-    const allReviews = await getAllReviews()
-    // lastReviewedAt is only set by real ratings (not Mark), so this naturally excludes bare adds
-    const reviewedToday = allReviews.filter(r => isSameLocalDate(r.lastReviewedAt, todayStr)).length
+    const reviewEvents = await getAllReviewEvents()
+    const reviewedCountsByDay = buildReviewedSectionCountsByDay(reviewEvents)
+    const reviewedToday = reviewedCountsByDay.get(todayStr) || 0
     appSubtitleEl.textContent = `Reviewed today: ${reviewedToday}`
     return
   }
@@ -932,6 +932,39 @@ function isSameLocalDate(isoString, todayStr) {
   return localDateStr(new Date(isoString)) === todayStr
 }
 
+function buildReviewedSectionCountsByDay(reviewEvents = []) {
+  const firstInteractionAtByItem = new Map()
+  const countedItemDayKeys = new Set()
+  const countsByDay = new Map()
+
+  const sortedEvents = [...reviewEvents]
+    .filter(event => event?.itemId && event?.reviewedAt)
+    .sort((a, b) => new Date(a.reviewedAt) - new Date(b.reviewedAt))
+
+  for (const event of sortedEvents) {
+    const itemId = String(event.itemId)
+    const reviewedAtMs = new Date(event.reviewedAt).getTime()
+    if (!Number.isFinite(reviewedAtMs)) continue
+
+    if (!firstInteractionAtByItem.has(itemId)) {
+      firstInteractionAtByItem.set(itemId, reviewedAtMs)
+      continue
+    }
+
+    if (String(event.rating || '') === 'Mark') continue
+    if (reviewedAtMs <= firstInteractionAtByItem.get(itemId)) continue
+
+    const day = localDateStr(new Date(reviewedAtMs))
+    const itemDayKey = `${itemId}::${day}`
+    if (countedItemDayKeys.has(itemDayKey)) continue
+
+    countedItemDayKeys.add(itemDayKey)
+    countsByDay.set(day, (countsByDay.get(day) || 0) + 1)
+  }
+
+  return countsByDay
+}
+
 async function getDueReviews() {
   const now = Date.now()
   const allReviews = await getAllReviews()
@@ -1038,10 +1071,10 @@ async function renderReviewInfo() {
   const todayStr = localDateStr()
   const allReviews = await getAllReviews()
   const reviewEvents = await getAllReviewEvents()
+  const reviewedCountsByDay = buildReviewedSectionCountsByDay(reviewEvents)
 
   const newToday = allReviews.filter(r => isSameLocalDate(r.createdAt, todayStr)).length
-  // lastReviewedAt is only set by real ratings (Again/Hard/Good/Easy), never by Mark
-  const reviewedToday = allReviews.filter(r => isSameLocalDate(r.lastReviewedAt, todayStr)).length
+  const reviewedToday = reviewedCountsByDay.get(todayStr) || 0
   if (reviewTodayStatsEl) {
     reviewTodayStatsEl.textContent = `Today: ${newToday} new · ${reviewedToday} reviewed`
   }
@@ -1156,21 +1189,26 @@ function shortDate(yyyyMmDd) {
 
 async function renderStatsView() {
   const allReviews = await getAllReviews()
+  const reviewEvents = await getAllReviewEvents()
+  const reviewedCountsByDay = buildReviewedSectionCountsByDay(reviewEvents)
   const today = new Date()
   const todayStr = localDateStr(today)
 
   const newToday = allReviews.filter(r => isSameLocalDate(r.createdAt, todayStr)).length
-  // lastReviewedAt is only set by real ratings, so this naturally excludes bare Mark adds
-  const reviewedToday = allReviews.filter(r => isSameLocalDate(r.lastReviewedAt, todayStr)).length
+  const reviewedToday = reviewedCountsByDay.get(todayStr) || 0
   statsTodayEl.textContent = `Today: ${newToday} new · ${reviewedToday} reviewed`
 
   const last7Start = localDateStr(addDays(today, -6))
   const new7 = allReviews.filter(r => r.createdAt && localDateStr(new Date(r.createdAt)) >= last7Start).length
-  const reviewed7 = allReviews.filter(r => r.lastReviewedAt && localDateStr(new Date(r.lastReviewedAt)) >= last7Start).length
+  const reviewed7 = Array.from(reviewedCountsByDay.entries())
+    .filter(([day]) => day >= last7Start)
+    .reduce((sum, [, count]) => sum + count, 0)
 
   const last30Start = localDateStr(addDays(today, -29))
   const new30 = allReviews.filter(r => r.createdAt && localDateStr(new Date(r.createdAt)) >= last30Start).length
-  const reviewed30 = allReviews.filter(r => r.lastReviewedAt && localDateStr(new Date(r.lastReviewedAt)) >= last30Start).length
+  const reviewed30 = Array.from(reviewedCountsByDay.entries())
+    .filter(([day]) => day >= last30Start)
+    .reduce((sum, [, count]) => sum + count, 0)
 
   statsKpisEl.innerHTML = ''
   const kpis = [
@@ -1205,8 +1243,10 @@ async function renderStatsView() {
   for (const review of allReviews) {
     const created = review.createdAt ? localDateStr(new Date(review.createdAt)) : ''
     if (map.has(created)) map.get(created).new += 1
-    const reviewed = review.lastReviewedAt ? localDateStr(new Date(review.lastReviewedAt)) : ''
-    if (reviewed && map.has(reviewed)) map.get(reviewed).reviewed += 1
+  }
+
+  for (const [day, count] of reviewedCountsByDay.entries()) {
+    if (map.has(day)) map.get(day).reviewed += count
   }
 
   const maxCount = Math.max(1, ...days.map(d => Math.max(map.get(d).new, map.get(d).reviewed)))
