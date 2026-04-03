@@ -5,10 +5,12 @@ import {
   upsertBook,
   deleteBook,
   upsertReview,
+  addReviewEvent,
   getReview,
   deleteReview,
   deleteAllReviews,
-  deleteReviewsForBook
+  deleteReviewsForBook,
+  getAllReviewEvents
 } from './db.js'
 import { importEpubFile } from './epub.js'
 import { isOpfsSupported, deleteBookFiles } from './opfs.js'
@@ -327,8 +329,8 @@ async function updateTopHeader() {
   if (activeView === 'queue') {
     appMainTitleEl.textContent = `Reviewing: ${currentBook?.title || 'Unknown book'}`
     const todayStr = localDateStr()
-    const allReviews = await getAllReviews()
-    const reviewedToday = allReviews.filter(r => isSameLocalDate(r.lastReviewedAt, todayStr)).length
+    const reviewEvents = await getAllReviewEvents()
+    const reviewedToday = reviewEvents.filter(r => isSameLocalDate(r.reviewedAt, todayStr)).length
     appSubtitleEl.textContent = `Reviewed today: ${reviewedToday}`
     return
   }
@@ -608,6 +610,46 @@ function makeItemId(bookId, chapterFile, sectionName) {
   return `${bookId}::${chapterFile}::${sectionName}`
 }
 
+function cloneReviewState(review) {
+  return review ? JSON.parse(JSON.stringify(review)) : null
+}
+
+async function logReviewEvent({
+  itemId,
+  bookId,
+  chapterFile,
+  sectionName,
+  rating,
+  reviewedAt,
+  before,
+  after
+}) {
+  await addReviewEvent({
+    itemId,
+    bookId,
+    chapterFile,
+    sectionName,
+    reviewedAt: new Date(reviewedAt).toISOString(),
+    rating: String(rating),
+    scheduler: 'fsrs',
+    dueDateBefore: before?.dueDate || null,
+    dueDateAfter: after?.dueDate || null,
+    intervalDaysBefore: Number(before?.intervalDays ?? 0),
+    intervalDaysAfter: Number(after?.intervalDays ?? 0),
+    repetitionsBefore: Number(before?.repetitions ?? 0),
+    repetitionsAfter: Number(after?.repetitions ?? 0),
+    lapsesBefore: Number(before?.lapses ?? 0),
+    lapsesAfter: Number(after?.lapses ?? 0),
+    easeFactorBefore: Number(before?.easeFactor ?? 0),
+    easeFactorAfter: Number(after?.easeFactor ?? 0),
+    fsrsCardBefore: before?.fsrsCard || null,
+    fsrsCardAfter: after?.fsrsCard || null,
+    settingsSnapshot: cloneReviewState(srsSettings.fsrs),
+    stateBefore: cloneReviewState(before),
+    stateAfter: cloneReviewState(after)
+  })
+}
+
 async function handleSrsMessage(event) {
   if (!event.data || event.data.type !== 'srs') return
 
@@ -633,16 +675,47 @@ async function handleSrsMessage(event) {
     })
   }
 
+  review = {
+    ...review,
+    scheduler: 'fsrs'
+  }
+
+  const before = cloneReviewState(review)
+
   if (rating === 'Mark') {
-    await upsertReview({
+    const updated = {
       ...review,
       lastRating: 'Mark'
+    }
+    await upsertReview(updated)
+    await logReviewEvent({
+      itemId,
+      bookId: location.bookId,
+      chapterFile: location.chapterFile,
+      sectionName,
+      rating,
+      reviewedAt: new Date(),
+      before,
+      after: updated
     })
     setStatus(`Marked "${sectionName}" for review. Due ${review.dueDate}.`, 'ok')
   } else {
     const now = new Date()
-    const updated = await applyFsrsRating(review, rating, now, srsSettings.fsrs)
+    const updated = {
+      ...(await applyFsrsRating(review, rating, now, srsSettings.fsrs)),
+      scheduler: 'fsrs'
+    }
     await upsertReview(updated)
+    await logReviewEvent({
+      itemId,
+      bookId: location.bookId,
+      chapterFile: location.chapterFile,
+      sectionName,
+      rating,
+      reviewedAt: now,
+      before,
+      after: updated
+    })
     setStatus(
       `FSRS ${rating}: "${sectionName}" — due ${updated.dueDate} | ${updated.intervalDays}d`,
       'ok'
@@ -852,9 +925,10 @@ async function renderReviewQueue() {
 async function renderReviewInfo() {
   const todayStr = localDateStr()
   const allReviews = await getAllReviews()
+  const reviewEvents = await getAllReviewEvents()
 
   const newToday = allReviews.filter(r => isSameLocalDate(r.createdAt, todayStr)).length
-  const reviewedToday = allReviews.filter(r => isSameLocalDate(r.lastReviewedAt, todayStr)).length
+  const reviewedToday = reviewEvents.filter(r => isSameLocalDate(r.reviewedAt, todayStr)).length
   if (reviewTodayStatsEl) {
     reviewTodayStatsEl.textContent = `Today: ${newToday} new · ${reviewedToday} reviewed`
   }
@@ -969,20 +1043,21 @@ function shortDate(yyyyMmDd) {
 
 async function renderStatsView() {
   const allReviews = await getAllReviews()
+  const reviewEvents = await getAllReviewEvents()
   const today = new Date()
   const todayStr = localDateStr(today)
 
   const newToday = allReviews.filter(r => isSameLocalDate(r.createdAt, todayStr)).length
-  const reviewedToday = allReviews.filter(r => isSameLocalDate(r.lastReviewedAt, todayStr)).length
+  const reviewedToday = reviewEvents.filter(r => isSameLocalDate(r.reviewedAt, todayStr)).length
   statsTodayEl.textContent = `Today: ${newToday} new · ${reviewedToday} reviewed`
 
   const last7Start = localDateStr(addDays(today, -6))
   const new7 = allReviews.filter(r => r.createdAt && localDateStr(new Date(r.createdAt)) >= last7Start).length
-  const reviewed7 = allReviews.filter(r => r.lastReviewedAt && localDateStr(new Date(r.lastReviewedAt)) >= last7Start).length
+  const reviewed7 = reviewEvents.filter(r => r.reviewedAt && localDateStr(new Date(r.reviewedAt)) >= last7Start).length
 
   const last30Start = localDateStr(addDays(today, -29))
   const new30 = allReviews.filter(r => r.createdAt && localDateStr(new Date(r.createdAt)) >= last30Start).length
-  const reviewed30 = allReviews.filter(r => r.lastReviewedAt && localDateStr(new Date(r.lastReviewedAt)) >= last30Start).length
+  const reviewed30 = reviewEvents.filter(r => r.reviewedAt && localDateStr(new Date(r.reviewedAt)) >= last30Start).length
 
   statsKpisEl.innerHTML = ''
   const kpis = [
@@ -1016,8 +1091,11 @@ async function renderStatsView() {
 
   for (const review of allReviews) {
     const created = review.createdAt ? localDateStr(new Date(review.createdAt)) : ''
-    const reviewed = review.lastReviewedAt ? localDateStr(new Date(review.lastReviewedAt)) : ''
     if (map.has(created)) map.get(created).new += 1
+  }
+
+  for (const reviewEvent of reviewEvents) {
+    const reviewed = reviewEvent.reviewedAt ? localDateStr(new Date(reviewEvent.reviewedAt)) : ''
     if (map.has(reviewed)) map.get(reviewed).reviewed += 1
   }
 
