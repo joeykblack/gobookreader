@@ -401,17 +401,25 @@ export function createReaderController({
       }
     }
 
-    // Firefox-specific SVG text centering fix.
-    // Applying this globally can push numbers too low on Android Chromium.
+    // Browser-specific SVG move-number centering fixes.
     const ua = String(navigator.userAgent || '').toLowerCase()
     const isFirefox = ua.includes('firefox')
-    if (isFirefox) {
+    const isAndroid = ua.includes('android')
+
+    if (isFirefox || isAndroid) {
       const svgNumberTexts = Array.from(doc.querySelectorAll('svg text'))
       for (const textEl of svgNumberTexts) {
         const value = (textEl.textContent || '').trim()
         if (!/^\d+$/.test(value)) continue
 
-        textEl.setAttribute('dy', '0.30em')
+        if (isFirefox) {
+          textEl.setAttribute('dy', '0.30em')
+        } else {
+          // Android Chromium tends to place move numbers slightly low.
+          textEl.setAttribute('dy', '0.15em')
+          textEl.setAttribute('dominant-baseline', 'middle')
+          textEl.setAttribute('alignment-baseline', 'middle')
+        }
       }
     }
 
