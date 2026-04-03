@@ -1,9 +1,9 @@
 const DEFAULT_FSRS_SETTINGS = {
   request_retention: 0.9,
-  maximum_interval: 36500,
+  maximum_interval: 180,
   enable_fuzz: true,
   enable_short_term: true,
-  learning_steps: ['1m', '10m'],
+  learning_steps: ['5m', '20m'],
   relearning_steps: ['10m'],
 }
 
