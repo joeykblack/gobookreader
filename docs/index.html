@@ -553,10 +553,12 @@
         }
         .menu-panel {
           position: fixed;
-          top: 0.75rem;
+          top: calc(var(--viewport-top) + var(--top-bar-height) + 0.35rem);
           right: 0.75rem;
           left: 0.75rem;
           min-width: 0;
+          max-height: calc(var(--app-height) - var(--top-bar-height) - 1.25rem);
+          overflow-y: auto;
         }
         .reader-controls {
           align-items: center;
