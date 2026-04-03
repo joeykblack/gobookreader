@@ -23,6 +23,10 @@ const appStatusEl = document.getElementById('app-status')
 const importInputEl = document.getElementById('epub-file')
 const importButtonEl = document.getElementById('import-button')
 const booksListEl = document.getElementById('books-list')
+const sortTitleEl = document.getElementById('sort-title')
+const sortAuthorEl = document.getElementById('sort-author')
+const sortPublicationDateEl = document.getElementById('sort-publicationDate')
+const sortImportedAtEl = document.getElementById('sort-importedAt')
 const readerRootEl = document.getElementById('reader-panel')
 const appMainTitleEl = document.getElementById('app-main-title')
 const appSubtitleEl = document.getElementById('app-subtitle')
@@ -273,6 +277,7 @@ function getBookState(bookId) {
 
 let books = []
 let selectedBookId = readerState.selectedBookId
+let booksSort = { key: 'title', direction: 'asc' }
 let currentReviewItem = null  // Track which item from queue is being reviewed
 let activeView = readerState.activeView || 'library'
 let detachSectionTracker = null
@@ -454,30 +459,45 @@ async function registerServiceWorker() {
 
 function renderBooks() {
   booksListEl.innerHTML = ''
+  updateSortHeaderIndicators()
 
   if (!books.length) {
-    const li = document.createElement('li')
-    li.textContent = 'No books imported yet.'
-    booksListEl.append(li)
+    const row = document.createElement('tr')
+    const cell = document.createElement('td')
+    cell.colSpan = 5
+    cell.textContent = 'No books imported yet.'
+    row.append(cell)
+    booksListEl.append(row)
     return
   }
 
-  for (const book of books) {
-    const li = document.createElement('li')
-    li.style.display = 'flex'
-    li.style.alignItems = 'center'
-    li.style.gap = '0.5rem'
-    li.style.marginBottom = '0.35rem'
+  const sortedBooks = [...books].sort((a, b) => compareBooks(a, b, booksSort))
+
+  for (const book of sortedBooks) {
+    const row = document.createElement('tr')
 
     const selectBtn = document.createElement('button')
     selectBtn.type = 'button'
-    selectBtn.textContent = `${book.title} (${book.author})`
+    selectBtn.className = 'book-btn'
+    selectBtn.textContent = book.title
     selectBtn.addEventListener('click', async () => {
       selectedBookId = book.id
       setSelectedBookId(book.id)
       switchView('read')
       await openBookAtSavedPosition(book)
     })
+
+    const titleCell = document.createElement('td')
+    titleCell.append(selectBtn)
+
+    const authorCell = document.createElement('td')
+    authorCell.textContent = book.author || 'Unknown'
+
+    const publicationCell = document.createElement('td')
+    publicationCell.textContent = formatDateCell(book.publicationDate)
+
+    const importCell = document.createElement('td')
+    importCell.textContent = formatDateCell(book.importedAt)
 
     const deleteBtn = document.createElement('button')
     deleteBtn.type = 'button'
@@ -486,13 +506,86 @@ function renderBooks() {
     deleteBtn.className = 'btn-danger'
     deleteBtn.addEventListener('click', () => deleteSelectedBook(book))
 
-    li.append(selectBtn, deleteBtn)
-    booksListEl.append(li)
+    const actionCell = document.createElement('td')
+    actionCell.append(deleteBtn)
+
+    row.append(titleCell, authorCell, publicationCell, importCell, actionCell)
+    booksListEl.append(row)
   }
 
   const selected = books.find(book => book.id === selectedBookId) || books[0]
   selectedBookId = selected.id
   setSelectedBookId(selectedBookId)
+}
+
+function formatDateCell(value) {
+  if (!value) return '—'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return String(value)
+  return d.toLocaleDateString()
+}
+
+function getSortValue(book, key) {
+  if (key === 'title' || key === 'author') {
+    return String(book[key] || '').toLowerCase()
+  }
+
+  if (key === 'publicationDate' || key === 'importedAt') {
+    const time = new Date(book[key] || '').getTime()
+    return Number.isFinite(time) ? time : Number.NEGATIVE_INFINITY
+  }
+
+  return String(book?.[key] || '').toLowerCase()
+}
+
+function compareBooks(a, b, sort) {
+  const av = getSortValue(a, sort.key)
+  const bv = getSortValue(b, sort.key)
+  let result = 0
+  if (av < bv) result = -1
+  else if (av > bv) result = 1
+
+  if (result === 0) {
+    result = String(a.title || '').localeCompare(String(b.title || ''))
+  }
+
+  return sort.direction === 'asc' ? result : -result
+}
+
+function setBooksSort(key) {
+  if (booksSort.key === key) {
+    booksSort.direction = booksSort.direction === 'asc' ? 'desc' : 'asc'
+  } else {
+    booksSort = {
+      key,
+      direction: key === 'importedAt' ? 'desc' : 'asc'
+    }
+  }
+  renderBooks()
+}
+
+function updateSortHeaderIndicators() {
+  const headers = {
+    title: sortTitleEl,
+    author: sortAuthorEl,
+    publicationDate: sortPublicationDateEl,
+    importedAt: sortImportedAtEl
+  }
+
+  for (const [key, el] of Object.entries(headers)) {
+    if (!el) continue
+    const active = booksSort.key === key
+    el.classList.toggle('active', active)
+    const arrow = active ? (booksSort.direction === 'asc' ? ' ↑' : ' ↓') : ''
+    const base = key === 'publicationDate'
+      ? 'Publication date'
+      : key === 'importedAt'
+        ? 'Import date'
+        : key === 'author'
+          ? 'Author'
+          : 'Title'
+    el.textContent = `${base}${arrow}`
+  }
 }
 
 async function openBookAtSavedPosition(book) {
@@ -1260,6 +1353,10 @@ async function init() {
   }
 
   importButtonEl.addEventListener('click', importSelectedEpub)
+  sortTitleEl?.addEventListener('click', () => setBooksSort('title'))
+  sortAuthorEl?.addEventListener('click', () => setBooksSort('author'))
+  sortPublicationDateEl?.addEventListener('click', () => setBooksSort('publicationDate'))
+  sortImportedAtEl?.addEventListener('click', () => setBooksSort('importedAt'))
   menuToggleEl.addEventListener('click', toggleMenu)
   menuBackdropEl.addEventListener('click', closeMenu)
   menuReadEl.addEventListener('click', async () => {

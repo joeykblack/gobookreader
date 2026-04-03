@@ -113,6 +113,10 @@
         width: min(var(--content-max), calc(100% - 1rem));
         margin: 0 auto 1rem;
       }
+      #bookshelf-view.app-section {
+        display: block;
+        width: min(var(--reader-max), calc(100% - 2rem));
+      }
       .reader-shell {
         position: fixed;
         top: var(--reader-top);
@@ -176,6 +180,32 @@
       }
       .btn-danger:hover {
         background: #991b1b;
+      }
+      .books-table-wrap {
+        overflow-x: auto;
+      }
+      .books-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .books-table th,
+      .books-table td {
+        border-bottom: 1px solid #334155;
+        padding: 0.45rem 0.4rem;
+        text-align: left;
+        vertical-align: middle;
+      }
+      .books-table th {
+        color: #cbd5e1;
+        font-size: 0.85rem;
+      }
+      .books-sort {
+        all: unset;
+        cursor: pointer;
+        color: inherit;
+      }
+      .books-sort.active {
+        color: #93c5fd;
       }
       .reader-panel {
         padding: 0;
@@ -578,6 +608,10 @@
         .settings-grid {
           grid-template-columns: 1fr;
         }
+        #bookshelf-view.app-section {
+          width: 100%;
+          margin: 0 0 1rem;
+        }
         .reader-controls button,
         .reader-actions button {
           padding: 0.4rem 0.55rem;
@@ -631,7 +665,20 @@
       <section id="bookshelf-view" class="grid app-section">
         <div class="panel">
           <h2 style="margin-top: 0;">Imported books</h2>
-          <ul id="books-list"></ul>
+          <div class="books-table-wrap">
+            <table class="books-table">
+              <thead>
+                <tr>
+                  <th><button id="sort-title" class="books-sort" type="button">Title</button></th>
+                  <th><button id="sort-author" class="books-sort" type="button">Author</button></th>
+                  <th><button id="sort-publicationDate" class="books-sort" type="button">Publication date</button></th>
+                  <th><button id="sort-importedAt" class="books-sort" type="button">Import date</button></th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="books-list"></tbody>
+            </table>
+          </div>
         </div>
       </section>
 

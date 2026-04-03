@@ -128,6 +128,7 @@ function parseOpf(opfText, opfPath) {
   const title = firstText(doc, 'title')
   const author = firstText(doc, 'creator')
   const identifier = firstText(doc, 'identifier')
+  const publicationDate = firstText(doc, 'date')
 
   const manifestItems = getAllElementsByLocalName(doc, 'item')
   const manifestById = new Map()
@@ -165,7 +166,7 @@ function parseOpf(opfText, opfPath) {
 
   const navPath = navHref ? resolvePath(opfDir, navHref) : ''
 
-  return { title, author, identifier, opfPath, chapters, navPath }
+  return { title, author, identifier, publicationDate, opfPath, chapters, navPath }
 }
 
 export async function importEpubFile(file, setProgress) {
@@ -223,6 +224,7 @@ export async function importEpubFile(file, setProgress) {
     id: bookId,
     title: parsed.title || file.name,
     author: parsed.author || 'Unknown',
+    publicationDate: parsed.publicationDate || '',
     opfPath: parsed.opfPath,
     chapters: parsed.chapters,
     navigation,
