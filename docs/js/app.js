@@ -1039,7 +1039,13 @@ async function renderReviewInfo() {
   const reviewEvents = await getAllReviewEvents()
 
   const newToday = allReviews.filter(r => isSameLocalDate(r.createdAt, todayStr)).length
-  const reviewedToday = reviewEvents.filter(r => isSameLocalDate(r.reviewedAt, todayStr)).length
+  // Only count reviews of sections that were created before today (not added and reviewed same day)
+  const reviewedToday = reviewEvents.filter(r => {
+    if (!isSameLocalDate(r.reviewedAt, todayStr)) return false
+    const section = allReviews.find(s => s.itemId === r.itemId)
+    if (!section) return false
+    return !isSameLocalDate(section.createdAt, todayStr)
+  }).length
   if (reviewTodayStatsEl) {
     reviewTodayStatsEl.textContent = `Today: ${newToday} new · ${reviewedToday} reviewed`
   }
@@ -1159,16 +1165,34 @@ async function renderStatsView() {
   const todayStr = localDateStr(today)
 
   const newToday = allReviews.filter(r => isSameLocalDate(r.createdAt, todayStr)).length
-  const reviewedToday = reviewEvents.filter(r => isSameLocalDate(r.reviewedAt, todayStr)).length
+  // Only count reviews of sections that were created before today (not added and reviewed same day)
+  const reviewedToday = reviewEvents.filter(r => {
+    if (!isSameLocalDate(r.reviewedAt, todayStr)) return false
+    const section = allReviews.find(s => s.itemId === r.itemId)
+    if (!section) return false
+    return !isSameLocalDate(section.createdAt, todayStr)
+  }).length
   statsTodayEl.textContent = `Today: ${newToday} new · ${reviewedToday} reviewed`
 
   const last7Start = localDateStr(addDays(today, -6))
   const new7 = allReviews.filter(r => r.createdAt && localDateStr(new Date(r.createdAt)) >= last7Start).length
-  const reviewed7 = reviewEvents.filter(r => r.reviewedAt && localDateStr(new Date(r.reviewedAt)) >= last7Start).length
+  // Only count reviews of sections that were created before their review date
+  const reviewed7 = reviewEvents.filter(r => {
+    if (!r.reviewedAt || localDateStr(new Date(r.reviewedAt)) < last7Start) return false
+    const section = allReviews.find(s => s.itemId === r.itemId)
+    if (!section || !section.createdAt) return false
+    return localDateStr(new Date(section.createdAt)) < localDateStr(new Date(r.reviewedAt))
+  }).length
 
   const last30Start = localDateStr(addDays(today, -29))
   const new30 = allReviews.filter(r => r.createdAt && localDateStr(new Date(r.createdAt)) >= last30Start).length
-  const reviewed30 = reviewEvents.filter(r => r.reviewedAt && localDateStr(new Date(r.reviewedAt)) >= last30Start).length
+  // Only count reviews of sections that were created before their review date
+  const reviewed30 = reviewEvents.filter(r => {
+    if (!r.reviewedAt || localDateStr(new Date(r.reviewedAt)) < last30Start) return false
+    const section = allReviews.find(s => s.itemId === r.itemId)
+    if (!section || !section.createdAt) return false
+    return localDateStr(new Date(section.createdAt)) < localDateStr(new Date(r.reviewedAt))
+  }).length
 
   statsKpisEl.innerHTML = ''
   const kpis = [
@@ -1207,7 +1231,15 @@ async function renderStatsView() {
 
   for (const reviewEvent of reviewEvents) {
     const reviewed = reviewEvent.reviewedAt ? localDateStr(new Date(reviewEvent.reviewedAt)) : ''
-    if (map.has(reviewed)) map.get(reviewed).reviewed += 1
+    if (!map.has(reviewed)) continue
+    // Only count reviews of sections that were created before their review date
+    const section = allReviews.find(s => s.itemId === reviewEvent.itemId)
+    if (section && section.createdAt) {
+      const created = localDateStr(new Date(section.createdAt))
+      if (created < reviewed) {
+        map.get(reviewed).reviewed += 1
+      }
+    }
   }
 
   const maxCount = Math.max(1, ...days.map(d => Math.max(map.get(d).new, map.get(d).reviewed)))
