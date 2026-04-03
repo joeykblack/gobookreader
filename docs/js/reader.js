@@ -415,9 +415,9 @@ export function createReaderController({
         if (isFirefox) {
           textEl.setAttribute('dy', '0.30em')
         } else {
-          // Android Chromium tends to place move numbers low; avoid extra downward dy.
-          textEl.setAttribute('dy', '0em')
-          textEl.setAttribute('dominant-baseline', 'middle')
+          // Android Chromium tends to place move numbers low; nudge them upward.
+          textEl.setAttribute('dy', '-0.18em')
+          textEl.setAttribute('dominant-baseline', 'central')
           textEl.setAttribute('alignment-baseline', 'middle')
         }
       }
