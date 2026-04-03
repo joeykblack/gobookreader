@@ -416,7 +416,7 @@ export function createReaderController({
           textEl.setAttribute('dy', '0.30em')
         } else {
           // Android Chromium tuning: avoid aggressive baseline overrides.
-          textEl.setAttribute('dy', '0.20em')
+          textEl.setAttribute('dy', '0.12em')
           textEl.removeAttribute('dominant-baseline')
           textEl.removeAttribute('alignment-baseline')
         }
