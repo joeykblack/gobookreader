@@ -352,13 +352,9 @@ async function updateTopHeader() {
     appMainTitleEl.textContent = `Reviewing: ${currentBook?.title || 'Unknown book'}`
     const todayStr = localDateStr()
     const reviewEvents = await getAllReviewEvents()
-    const allReviews = await getAllReviews()
-    // Only count reviews of sections that were created before today (not added and reviewed same day)
+    // Count reviews with actual ratings (not "Mark" which is just adding a section)
     const reviewedToday = reviewEvents.filter(r => {
-      if (!isSameLocalDate(r.reviewedAt, todayStr)) return false
-      const section = allReviews.find(s => s.itemId === r.itemId)
-      if (!section) return false
-      return !isSameLocalDate(section.createdAt, todayStr)
+      return isSameLocalDate(r.reviewedAt, todayStr) && r.rating !== 'Mark'
     }).length
     appSubtitleEl.textContent = `Reviewed today: ${reviewedToday}`
     return
@@ -1046,12 +1042,9 @@ async function renderReviewInfo() {
   const reviewEvents = await getAllReviewEvents()
 
   const newToday = allReviews.filter(r => isSameLocalDate(r.createdAt, todayStr)).length
-  // Only count reviews of sections that were created before today (not added and reviewed same day)
+  // Count reviews with actual ratings (not "Mark" which is just adding a section)
   const reviewedToday = reviewEvents.filter(r => {
-    if (!isSameLocalDate(r.reviewedAt, todayStr)) return false
-    const section = allReviews.find(s => s.itemId === r.itemId)
-    if (!section) return false
-    return !isSameLocalDate(section.createdAt, todayStr)
+    return isSameLocalDate(r.reviewedAt, todayStr) && r.rating !== 'Mark'
   }).length
   if (reviewTodayStatsEl) {
     reviewTodayStatsEl.textContent = `Today: ${newToday} new · ${reviewedToday} reviewed`
@@ -1172,33 +1165,24 @@ async function renderStatsView() {
   const todayStr = localDateStr(today)
 
   const newToday = allReviews.filter(r => isSameLocalDate(r.createdAt, todayStr)).length
-  // Only count reviews of sections that were created before today (not added and reviewed same day)
+  // Count reviews with actual ratings (not "Mark" which is just adding a section)
   const reviewedToday = reviewEvents.filter(r => {
-    if (!isSameLocalDate(r.reviewedAt, todayStr)) return false
-    const section = allReviews.find(s => s.itemId === r.itemId)
-    if (!section) return false
-    return !isSameLocalDate(section.createdAt, todayStr)
+    return isSameLocalDate(r.reviewedAt, todayStr) && r.rating !== 'Mark'
   }).length
   statsTodayEl.textContent = `Today: ${newToday} new · ${reviewedToday} reviewed`
 
   const last7Start = localDateStr(addDays(today, -6))
   const new7 = allReviews.filter(r => r.createdAt && localDateStr(new Date(r.createdAt)) >= last7Start).length
-  // Only count reviews of sections that were created before their review date
+  // Count reviews with actual ratings (not "Mark")
   const reviewed7 = reviewEvents.filter(r => {
-    if (!r.reviewedAt || localDateStr(new Date(r.reviewedAt)) < last7Start) return false
-    const section = allReviews.find(s => s.itemId === r.itemId)
-    if (!section || !section.createdAt) return false
-    return localDateStr(new Date(section.createdAt)) < localDateStr(new Date(r.reviewedAt))
+    return r.reviewedAt && r.rating !== 'Mark' && localDateStr(new Date(r.reviewedAt)) >= last7Start
   }).length
 
   const last30Start = localDateStr(addDays(today, -29))
   const new30 = allReviews.filter(r => r.createdAt && localDateStr(new Date(r.createdAt)) >= last30Start).length
-  // Only count reviews of sections that were created before their review date
+  // Count reviews with actual ratings (not "Mark")
   const reviewed30 = reviewEvents.filter(r => {
-    if (!r.reviewedAt || localDateStr(new Date(r.reviewedAt)) < last30Start) return false
-    const section = allReviews.find(s => s.itemId === r.itemId)
-    if (!section || !section.createdAt) return false
-    return localDateStr(new Date(section.createdAt)) < localDateStr(new Date(r.reviewedAt))
+    return r.reviewedAt && r.rating !== 'Mark' && localDateStr(new Date(r.reviewedAt)) >= last30Start
   }).length
 
   statsKpisEl.innerHTML = ''
@@ -1239,13 +1223,9 @@ async function renderStatsView() {
   for (const reviewEvent of reviewEvents) {
     const reviewed = reviewEvent.reviewedAt ? localDateStr(new Date(reviewEvent.reviewedAt)) : ''
     if (!map.has(reviewed)) continue
-    // Only count reviews of sections that were created before their review date
-    const section = allReviews.find(s => s.itemId === reviewEvent.itemId)
-    if (section && section.createdAt) {
-      const created = localDateStr(new Date(section.createdAt))
-      if (created < reviewed) {
-        map.get(reviewed).reviewed += 1
-      }
+    // Only count reviews with actual ratings (not "Mark")
+    if (reviewEvent.rating !== 'Mark') {
+      map.get(reviewed).reviewed += 1
     }
   }
 
