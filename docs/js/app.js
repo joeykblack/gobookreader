@@ -13,7 +13,8 @@ import {
 import { importEpubFile } from './epub.js'
 import { isOpfsSupported, deleteBookFiles } from './opfs.js'
 import { createReaderController } from './reader.js'
-import { createReviewItem, applySm2Rating } from './srs.js'
+import { createReviewItem } from './srs.js'
+import { applyFsrsRating, getDefaultFsrsSettings } from './fsrs.js'
 
 const swStatusEl = document.getElementById('sw-status')
 const appStatusEl = document.getElementById('app-status')
@@ -42,6 +43,7 @@ const menuLibraryEl = document.getElementById('menu-library')
 const menuImportEl = document.getElementById('menu-import')
 const menuInfoEl = document.getElementById('menu-info')
 const menuStatsEl = document.getElementById('menu-stats')
+const menuSettingsEl = document.getElementById('menu-settings')
 const menuAboutEl = document.getElementById('menu-about')
 const importView = document.getElementById('import-view')
 const bookshelfView = document.getElementById('bookshelf-view')
@@ -49,6 +51,7 @@ const queueView = document.getElementById('queue-view')
 const queueEmptyView = document.getElementById('queue-empty-view')
 const infoView = document.getElementById('info-view')
 const statsView = document.getElementById('stats-view')
+const settingsView = document.getElementById('settings-view')
 const aboutView = document.getElementById('about-view')
 const reviewTodayStatsEl = document.getElementById('review-today-stats')
 const statsTodayEl = document.getElementById('stats-today')
@@ -59,8 +62,161 @@ const reviewQueueSummaryEl = document.getElementById('review-queue-summary')
 const readerFooterControlsEl = document.getElementById('reader-footer-controls')
 const clearAllReviewsBtn = document.getElementById('clear-all-reviews')
 const aboutVersionEl = document.getElementById('about-version')
+const settingsFormEl = document.getElementById('settings-form')
+const fsrsSettingsEl = document.getElementById('fsrs-settings')
+const fsrsRetentionEl = document.getElementById('fsrs-retention')
+const fsrsMaxIntervalEl = document.getElementById('fsrs-max-interval')
+const fsrsEnableFuzzEl = document.getElementById('fsrs-enable-fuzz')
+const fsrsEnableShortEl = document.getElementById('fsrs-enable-short')
+const fsrsLearningStepsEl = document.getElementById('fsrs-learning-steps')
+const fsrsRelearningStepsEl = document.getElementById('fsrs-relearning-steps')
+const srsPreviewEl = document.getElementById('srs-preview')
 
 const READER_STATE_KEY = 'gorecall.readerState.v1'
+const SRS_SETTINGS_KEY = 'gorecall.srsSettings.v1'
+
+function defaultSrsSettings() {
+  return {
+    fsrs: getDefaultFsrsSettings()
+  }
+}
+
+function loadSrsSettings() {
+  const defaults = defaultSrsSettings()
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SRS_SETTINGS_KEY) || '{}')
+    return {
+      fsrs: { ...defaults.fsrs, ...(parsed.fsrs || {}) }
+    }
+  } catch {
+    return defaults
+  }
+}
+
+let srsSettings = loadSrsSettings()
+
+function saveSrsSettings() {
+  localStorage.setItem(SRS_SETTINGS_KEY, JSON.stringify(srsSettings))
+}
+
+function toStepsInput(value) {
+  return Array.isArray(value) ? value.join(', ') : ''
+}
+
+function parseStepsInput(value, fallback = []) {
+  const raw = String(value || '').trim()
+  if (!raw) return [...fallback]
+  const items = raw.split(',').map(v => v.trim()).filter(Boolean)
+  return items.length ? items : [...fallback]
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+function formatMs(ms) {
+  const totalMinutes = Math.max(0, Math.round(ms / 60000))
+  const days = Math.floor(totalMinutes / (60 * 24))
+  const hours = Math.floor((totalMinutes - days * 60 * 24) / 60)
+  const minutes = totalMinutes - days * 60 * 24 - hours * 60
+
+  if (days > 0) return `${days}d ${hours}h`
+  if (hours > 0) return `${hours}h ${minutes}m`
+  return `${minutes}m`
+}
+
+function formatDueFrom(reviewedAt, dueDate) {
+  const reviewed = new Date(reviewedAt)
+  const due = parseDueDateTime(dueDate)
+  if (!due) return 'unknown'
+  return formatMs(due.getTime() - reviewed.getTime())
+}
+
+async function applyRatingWithSettings(review, rating, reviewedAt, settings) {
+  return applyFsrsRating(review, rating, reviewedAt, settings.fsrs)
+}
+
+let srsPreviewRun = 0
+
+async function renderSrsPreview(settingsOverride = null) {
+  if (!srsPreviewEl) return
+  const run = ++srsPreviewRun
+  const settings = settingsOverride || readSettingsForm()
+  const ratings = ['Again', 'Hard', 'Good', 'Easy']
+  const now = new Date()
+
+  srsPreviewEl.textContent = 'Calculating preview…'
+
+  try {
+    const root = createReviewItem({
+      itemId: '__preview__',
+      bookId: '__preview__',
+      chapterFile: '__preview__.xhtml',
+      sectionName: 'Preview item',
+      positionOffset: 0
+    })
+
+    const branches = []
+    for (const firstRating of ratings) {
+      const first = await applyRatingWithSettings(root, firstRating, now, settings)
+      const firstDue = parseDueDateTime(first.dueDate) || now
+      const firstText = `${firstRating} → due in ${formatDueFrom(now, first.dueDate)} (${new Date(first.dueDate).toLocaleString()})`
+
+      const secondBranches = []
+      for (const secondRating of ratings) {
+        const second = await applyRatingWithSettings(first, secondRating, firstDue, settings)
+        const secondText = `${secondRating} next → due in ${formatDueFrom(firstDue, second.dueDate)} (${new Date(second.dueDate).toLocaleString()})`
+        secondBranches.push(`<li>${escapeHtml(secondText)}</li>`)
+      }
+
+      branches.push(`<li><div>${escapeHtml(firstText)}</div><ul class="preview-tree">${secondBranches.join('')}</ul></li>`)
+    }
+
+    if (run !== srsPreviewRun) return
+    srsPreviewEl.innerHTML = `<ul class="preview-tree">${branches.join('')}</ul>`
+  } catch (err) {
+    if (run !== srsPreviewRun) return
+    srsPreviewEl.textContent = `Unable to calculate preview: ${err.message}`
+  }
+}
+
+function setNumericInputValue(el, value) {
+  if (!el) return
+  el.value = Number.isFinite(Number(value)) ? String(value) : ''
+}
+
+function renderSettingsForm() {
+  if (!settingsFormEl) return
+
+  setNumericInputValue(fsrsRetentionEl, srsSettings.fsrs.request_retention)
+  setNumericInputValue(fsrsMaxIntervalEl, srsSettings.fsrs.maximum_interval)
+  fsrsEnableFuzzEl.value = srsSettings.fsrs.enable_fuzz ? 'true' : 'false'
+  fsrsEnableShortEl.value = srsSettings.fsrs.enable_short_term ? 'true' : 'false'
+  fsrsLearningStepsEl.value = toStepsInput(srsSettings.fsrs.learning_steps)
+  fsrsRelearningStepsEl.value = toStepsInput(srsSettings.fsrs.relearning_steps)
+
+  if (fsrsSettingsEl) fsrsSettingsEl.style.display = ''
+}
+
+function readSettingsForm() {
+  const defaults = defaultSrsSettings()
+
+  return {
+    fsrs: {
+      request_retention: Number(fsrsRetentionEl.value || defaults.fsrs.request_retention),
+      maximum_interval: Number(fsrsMaxIntervalEl.value || defaults.fsrs.maximum_interval),
+      enable_fuzz: fsrsEnableFuzzEl.value === 'true',
+      enable_short_term: fsrsEnableShortEl.value === 'true',
+      learning_steps: parseStepsInput(fsrsLearningStepsEl.value, defaults.fsrs.learning_steps),
+      relearning_steps: parseStepsInput(fsrsRelearningStepsEl.value, defaults.fsrs.relearning_steps),
+    }
+  }
+}
 
 function loadReaderState() {
   try {
@@ -126,6 +282,7 @@ const menuItemsByView = {
   import: menuImportEl,
   info: menuInfoEl,
   stats: menuStatsEl,
+  settings: menuSettingsEl,
   about: menuAboutEl
 }
 
@@ -483,10 +640,11 @@ async function handleSrsMessage(event) {
     })
     setStatus(`Marked "${sectionName}" for review. Due ${review.dueDate}.`, 'ok')
   } else {
-    const updated = applySm2Rating(review, rating, new Date())
+    const now = new Date()
+    const updated = await applyFsrsRating(review, rating, now, srsSettings.fsrs)
     await upsertReview(updated)
     setStatus(
-      `${rating}: "${sectionName}" — due ${updated.dueDate} | ${updated.intervalDays}d | EF ${updated.easeFactor}`,
+      `FSRS ${rating}: "${sectionName}" — due ${updated.dueDate} | ${updated.intervalDays}d`,
       'ok'
     )
   }
@@ -534,7 +692,7 @@ function toDueSortValue(value) {
 }
 
 const BUCKETS = [
-  { key: 'overdue',  label: 'Overdue',   color: '#ef4444' },
+  { key: 'overdue',  label: 'Ready',     color: '#ef4444' },
   { key: 'today',    label: 'Today',      color: '#f97316' },
   { key: 'tomorrow', label: 'Tomorrow',   color: '#facc15' },
   { key: 'week',     label: 'This week',  color: '#60a5fa' },
@@ -564,7 +722,7 @@ function dueBadgeInfo(dueDateStr, todayStr) {
   const diff = daysDiff(dueDateStr, todayStr)
   const bucket = getBucket(dueDateStr, todayStr)
   let text
-  if (diff < 0) text = 'Overdue'
+  if (diff < 0) text = 'Ready'
   else if (diff === 0) text = 'Today'
   else if (diff === 1) text = 'Tomorrow'
   else if (diff <= 6) text = `In ${diff} days`
@@ -909,6 +1067,7 @@ function switchView(view) {
   queueEmptyView.style.display = 'none'
   infoView.style.display = view === 'info' ? '' : 'none'
   statsView.style.display = view === 'stats' ? '' : 'none'
+  settingsView.style.display = view === 'settings' ? '' : 'none'
   aboutView.style.display = view === 'about' ? '' : 'none'
   reader.setViewVisible(view === 'read' || view === 'queue')
   readerFooterControlsEl.style.display = view === 'read' || view === 'queue' ? '' : 'none'
@@ -927,6 +1086,10 @@ function switchView(view) {
   if (view === 'queue') renderReviewQueue()
   if (view === 'info') renderReviewInfo()
   if (view === 'stats') renderStatsView()
+  if (view === 'settings') {
+    renderSettingsForm()
+    renderSrsPreview()
+  }
   updateTopHeader()
 }
 
@@ -1045,9 +1208,26 @@ async function init() {
     closeMenu()
     switchView('stats')
   })
+  menuSettingsEl.addEventListener('click', () => {
+    closeMenu()
+    switchView('settings')
+  })
   menuAboutEl.addEventListener('click', () => {
     closeMenu()
     switchView('about')
+  })
+  settingsFormEl.addEventListener('input', () => {
+    if (activeView === 'settings') {
+      renderSrsPreview()
+    }
+  })
+  settingsFormEl.addEventListener('submit', event => {
+    event.preventDefault()
+    srsSettings = readSettingsForm()
+    saveSrsSettings()
+    renderSettingsForm()
+    renderSrsPreview(srsSettings)
+    setStatus('Saved FSRS settings.', 'ok')
   })
   readerNextReviewButtonEl.addEventListener('click', goToNextReview)
   document.addEventListener('keydown', event => {
@@ -1065,6 +1245,8 @@ async function init() {
   attachSectionTracking()
   await loadAppVersion()
   await refreshBooks()
+  renderSettingsForm()
+  renderSrsPreview(srsSettings)
   switchView(activeView)
 
   if (activeView === 'read') {
