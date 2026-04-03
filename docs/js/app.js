@@ -240,12 +240,13 @@ function loadReaderState() {
     const parsed = JSON.parse(localStorage.getItem(READER_STATE_KEY) || '{}')
     return {
       selectedBookId: parsed.selectedBookId || null,
+      lastReadBookId: parsed.lastReadBookId || null,
       activeView: parsed.activeView || 'library',
       readerTheme: normalizeReaderTheme(parsed.readerTheme),
       books: parsed.books && typeof parsed.books === 'object' ? parsed.books : {}
     }
   } catch {
-    return { selectedBookId: null, activeView: 'library', readerTheme: 'sepia', books: {} }
+    return { selectedBookId: null, lastReadBookId: null, activeView: 'library', readerTheme: 'sepia', books: {} }
   }
 }
 
@@ -265,6 +266,11 @@ function ensureBookState(bookId) {
 
 function setSelectedBookId(bookId) {
   readerState.selectedBookId = bookId || null
+  saveReaderState()
+}
+
+function setLastReadBookId(bookId) {
+  readerState.lastReadBookId = bookId || null
   saveReaderState()
 }
 
@@ -435,7 +441,10 @@ const reader = createReaderController({
   onLocationChange: ({ bookId, chapterFile }) => {
     selectedBookId = bookId
     setSelectedBookId(bookId)
-    setBookChapter(bookId, chapterFile)
+    if (activeView === 'read') {
+      setLastReadBookId(bookId)
+      setBookChapter(bookId, chapterFile)
+    }
     updateTopHeader()
   }
 })
@@ -502,6 +511,7 @@ function renderBooks() {
     selectBtn.addEventListener('click', async () => {
       selectedBookId = book.id
       setSelectedBookId(book.id)
+      setLastReadBookId(book.id)
       switchView('read')
       await openBookAtSavedPosition(book)
     })
@@ -651,8 +661,10 @@ function attachSectionTracking() {
 
     let timer = null
     const persistVisibleSection = () => {
+      if (activeView !== 'read') return
       const location = reader.getCurrentLocation()
       if (!location) return
+      setLastReadBookId(location.bookId)
       const sectionName = findCurrentSectionName(iframeDoc)
       setBookSection(location.bookId, sectionName)
     }
@@ -682,11 +694,13 @@ function attachSectionTracking() {
 async function restoreLastReadingPosition() {
   if (!books.length) return
 
-  const book = books.find(b => b.id === selectedBookId) || books[0]
+  const preferredBookId = readerState.lastReadBookId || selectedBookId
+  const book = books.find(b => b.id === preferredBookId) || books[0]
   if (!book) return
 
   selectedBookId = book.id
   setSelectedBookId(book.id)
+  setLastReadBookId(book.id)
   await openBookAtSavedPosition(book)
 }
 
@@ -1322,12 +1336,8 @@ function switchView(view) {
 }
 
 async function openCurrentBookForRead() {
-  if (reader.isOpen()) {
-    switchView('read')
-    return
-  }
-
-  const book = books.find(b => b.id === selectedBookId) || books[0]
+  const preferredBookId = readerState.lastReadBookId || selectedBookId
+  const book = books.find(b => b.id === preferredBookId) || books[0]
   if (!book) {
     switchView('library')
     setStatus('No book is currently open.', 'warn')
@@ -1336,6 +1346,7 @@ async function openCurrentBookForRead() {
 
   selectedBookId = book.id
   setSelectedBookId(book.id)
+  setLastReadBookId(book.id)
   switchView('read')
   await openBookAtSavedPosition(book)
 }
@@ -1379,6 +1390,7 @@ async function importSelectedEpub() {
     await upsertBook(book)
     selectedBookId = book.id
     setSelectedBookId(book.id)
+    setLastReadBookId(book.id)
     await refreshBooks()
     switchView('read')
     await openBookAtSavedPosition(book)
@@ -1422,6 +1434,7 @@ async function init() {
   })
   menuReviewEl.addEventListener('click', () => {
     closeMenu()
+    currentReviewItem = null
     switchView('queue')
   })
   menuLibraryEl.addEventListener('click', () => {
