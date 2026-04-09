@@ -41,6 +41,14 @@ function defaultSyncState() {
 }
 
 function getOAuthRedirectUri() {
+  const host = String(window.location.hostname || '').toLowerCase()
+
+  // Local testing commonly authorizes only http://127.0.0.1:<port>/ in Google.
+  // Use origin root locally so /docs/ or /index.html paths do not cause mismatch.
+  if (host === '127.0.0.1' || host === 'localhost') {
+    return `${window.location.origin}/`
+  }
+
   // PWA launches can use /index.html while browser sessions may use /.
   // Normalize both to the app root path to avoid redirect_uri_mismatch.
   const normalizedPath = String(window.location.pathname || '/').replace(/index\.html$/i, '') || '/'
