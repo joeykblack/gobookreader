@@ -40,6 +40,13 @@ function defaultSyncState() {
   return { clientId: DEFAULT_CLIENT_ID, accessToken: null, tokenExpiry: 0, email: null, lastSyncedAt: null }
 }
 
+function getOAuthRedirectUri() {
+  // PWA launches can use /index.html while browser sessions may use /.
+  // Normalize both to the app root path to avoid redirect_uri_mismatch.
+  const normalizedPath = String(window.location.pathname || '/').replace(/index\.html$/i, '') || '/'
+  return `${window.location.origin}${normalizedPath}`
+}
+
 export function loadSyncState() {
   try {
     return { ...defaultSyncState(), ...JSON.parse(localStorage.getItem(SYNC_STORAGE_KEY) || '{}') }
@@ -103,7 +110,7 @@ export function checkAuthCallback() {
  * token data once the user completes the OAuth flow.
  */
 function startGoogleAuth(clientId) {
-  const redirectUri = window.location.origin + window.location.pathname
+  const redirectUri = getOAuthRedirectUri()
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
