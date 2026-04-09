@@ -17,7 +17,7 @@ import { isOpfsSupported, deleteBookFiles, isBookImportedLocally } from './opfs.
 import { createReaderController } from './reader.js'
 import { createReviewItem } from './srs.js'
 import { applyFsrsRating, getDefaultFsrsSettings } from './fsrs.js'
-import { checkAuthCallback, loadSyncState, isTokenValid, connectGoogle, disconnectGoogle, syncNow, clearRemoteSyncData } from './sync.js'
+import { checkAuthCallback, loadSyncState, isTokenValid, connectGoogle, disconnectGoogle, syncNow } from './sync.js'
 
 const swStatusEl = document.getElementById('sw-status')
 const appStatusEl = document.getElementById('app-status')
@@ -1395,24 +1395,6 @@ function renderSyncView() {
       }
     })
 
-    const clearBtn = document.createElement('button')
-    clearBtn.type = 'button'
-    clearBtn.className = 'btn-danger'
-    clearBtn.textContent = 'Clear sync data from Google Drive'
-    clearBtn.addEventListener('click', async () => {
-      if (!confirm('Delete the synced backup from your Google Drive app data folder?')) return
-      clearBtn.disabled = true
-      setSyncMsg('Clearing remote sync data…')
-      try {
-        const result = await clearRemoteSyncData()
-        renderSyncView()
-        setSyncMsg(result.deleted ? 'Remote sync data deleted.' : 'No remote sync data found.')
-      } catch (err) {
-        clearBtn.disabled = false
-        setSyncMsg(`Clear failed: ${err.message}`, true)
-      }
-    })
-
     const discBtn = document.createElement('button')
     discBtn.type = 'button'
     discBtn.className = 'btn-danger'
@@ -1422,7 +1404,7 @@ function renderSyncView() {
       renderSyncView()
     })
 
-    actions.append(syncBtn, clearBtn, discBtn)
+    actions.append(syncBtn, discBtn)
   } else {
     const connectBtn = document.createElement('button')
     connectBtn.type = 'button'
