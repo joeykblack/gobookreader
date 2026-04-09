@@ -13,10 +13,11 @@ import {
   getAllReviewEvents
 } from './db.js'
 import { importEpubFile } from './epub.js'
-import { isOpfsSupported, deleteBookFiles } from './opfs.js'
+import { isOpfsSupported, deleteBookFiles, isBookImportedLocally } from './opfs.js'
 import { createReaderController } from './reader.js'
 import { createReviewItem } from './srs.js'
 import { applyFsrsRating, getDefaultFsrsSettings } from './fsrs.js'
+import { checkAuthCallback, loadSyncState, isTokenValid, connectGoogle, disconnectGoogle, syncNow, clearRemoteSyncData } from './sync.js'
 
 const swStatusEl = document.getElementById('sw-status')
 const appStatusEl = document.getElementById('app-status')
@@ -51,6 +52,7 @@ const menuInfoEl = document.getElementById('menu-info')
 const menuStatsEl = document.getElementById('menu-stats')
 const menuSettingsEl = document.getElementById('menu-settings')
 const menuAboutEl = document.getElementById('menu-about')
+const menuSyncEl = document.getElementById('menu-sync')
 const importView = document.getElementById('import-view')
 const bookshelfView = document.getElementById('bookshelf-view')
 const queueView = document.getElementById('queue-view')
@@ -59,6 +61,8 @@ const infoView = document.getElementById('info-view')
 const statsView = document.getElementById('stats-view')
 const settingsView = document.getElementById('settings-view')
 const aboutView = document.getElementById('about-view')
+const syncView = document.getElementById('sync-view')
+const syncBodyEl = document.getElementById('sync-body')
 const reviewTodayStatsEl = document.getElementById('review-today-stats')
 const statsTodayEl = document.getElementById('stats-today')
 const statsKpisEl = document.getElementById('stats-kpis')
@@ -313,7 +317,8 @@ const menuItemsByView = {
   info: menuInfoEl,
   stats: menuStatsEl,
   settings: menuSettingsEl,
-  about: menuAboutEl
+  about: menuAboutEl,
+  sync: menuSyncEl
 }
 
 async function loadAppVersion() {
@@ -485,7 +490,7 @@ async function registerServiceWorker() {
   }
 }
 
-function renderBooks() {
+async function renderBooks() {
   booksListEl.innerHTML = ''
   updateSortHeaderIndicators()
 
@@ -501,13 +506,28 @@ function renderBooks() {
 
   const sortedBooks = [...books].sort((a, b) => compareBooks(a, b, booksSort))
 
-  for (const book of sortedBooks) {
+  // Check OPFS availability for all books in parallel
+  const localFlags = await Promise.all(sortedBooks.map(b => isBookImportedLocally(b.id)))
+
+  for (let i = 0; i < sortedBooks.length; i++) {
+    const book = sortedBooks[i]
+    const isLocal = localFlags[i]
     const row = document.createElement('tr')
 
     const selectBtn = document.createElement('button')
     selectBtn.type = 'button'
     selectBtn.className = 'book-btn'
-    selectBtn.textContent = book.title
+    selectBtn.disabled = !isLocal
+    selectBtn.title = isLocal ? book.title : 'Import this EPUB on this device to read it'
+    if (isLocal) {
+      selectBtn.textContent = book.title
+    } else {
+      selectBtn.textContent = book.title
+      const badge = document.createElement('span')
+      badge.textContent = ' ⬇ not imported'
+      badge.style.cssText = 'font-size:0.75rem;color:#9ca3af;margin-left:0.35rem;font-weight:400;'
+      selectBtn.append(badge)
+    }
     selectBtn.addEventListener('click', async () => {
       selectedBookId = book.id
       setSelectedBookId(book.id)
@@ -618,6 +638,11 @@ function updateSortHeaderIndicators() {
 }
 
 async function openBookAtSavedPosition(book) {
+  const imported = await isBookImportedLocally(book.id)
+  if (!imported) {
+    setStatus(`"${book.title}" has not been imported on this device. Go to Import and load the EPUB file.`, 'warn')
+    return
+  }
   const persisted = getBookState(book.id)
   const chapterIndex = book.chapters.findIndex(ch => ch.href === persisted.chapterFile)
   await reader.openBook(book, chapterIndex >= 0 ? chapterIndex : 0)
@@ -1298,6 +1323,135 @@ async function renderStatsView() {
   }
 }
 
+function setSyncMsg(text, isError = false) {
+  const el = syncBodyEl.querySelector('#sync-msg')
+  if (!el) return
+  el.textContent = text
+  el.style.display = text ? '' : 'none'
+  el.style.color = isError ? '#f87171' : ''
+}
+
+function renderSyncView() {
+  const state = loadSyncState()
+  const connected = isTokenValid(state)
+
+  syncBodyEl.innerHTML = ''
+
+  const privacy = document.createElement('div')
+  privacy.className = 'settings-help'
+  privacy.style.marginBottom = '0.9rem'
+  privacy.innerHTML = [
+    'Your sync data is stored in your own Google Drive app data folder (hidden from normal Drive views).',
+    'This app only requests <code>drive.appdata</code> scope and cannot access other files in your Drive.',
+    'Only sync books you own across your own devices. ',
+    'gobooks.com trusts users to use books for personal use only.'
+  ].join('<br><br>')
+  syncBodyEl.append(privacy)
+
+  const hr = document.createElement('hr')
+  hr.className = 'settings-divider'
+  syncBodyEl.append(hr)
+
+  const infoP = document.createElement('p')
+  infoP.className = 'settings-help'
+  infoP.style.marginBottom = '0.7rem'
+  if (connected && state.email) {
+    infoP.textContent = `Connected as ${state.email}`
+  } else if (connected) {
+    infoP.textContent = 'Connected to Google Drive.'
+  } else {
+    infoP.textContent = 'Not connected to Google Drive.'
+  }
+  syncBodyEl.append(infoP)
+
+  if (connected && state.lastSyncedAt) {
+    const lastP = document.createElement('p')
+    lastP.className = 'settings-help'
+    lastP.style.marginBottom = '0.7rem'
+    lastP.textContent = `Last synced: ${new Date(state.lastSyncedAt).toLocaleString()}`
+    syncBodyEl.append(lastP)
+  }
+
+  const actions = document.createElement('div')
+  actions.style.cssText = 'display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.7rem;'
+
+  if (connected) {
+    const syncBtn = document.createElement('button')
+    syncBtn.type = 'button'
+    syncBtn.textContent = 'Sync Now'
+    syncBtn.addEventListener('click', async () => {
+      syncBtn.disabled = true
+      setSyncMsg('Syncing…')
+      try {
+        const result = await syncNow()
+        renderSyncView()
+        setSyncMsg(
+          `Synced — ${result.stats.books} books, ${result.stats.sections} sections, ${result.stats.reviews} review events.`
+        )
+        await refreshBooks()
+      } catch (err) {
+        syncBtn.disabled = false
+        setSyncMsg(`Sync failed: ${err.message}`, true)
+      }
+    })
+
+    const clearBtn = document.createElement('button')
+    clearBtn.type = 'button'
+    clearBtn.className = 'btn-danger'
+    clearBtn.textContent = 'Clear sync data from Google Drive'
+    clearBtn.addEventListener('click', async () => {
+      if (!confirm('Delete the synced backup from your Google Drive app data folder?')) return
+      clearBtn.disabled = true
+      setSyncMsg('Clearing remote sync data…')
+      try {
+        const result = await clearRemoteSyncData()
+        renderSyncView()
+        setSyncMsg(result.deleted ? 'Remote sync data deleted.' : 'No remote sync data found.')
+      } catch (err) {
+        clearBtn.disabled = false
+        setSyncMsg(`Clear failed: ${err.message}`, true)
+      }
+    })
+
+    const discBtn = document.createElement('button')
+    discBtn.type = 'button'
+    discBtn.className = 'btn-danger'
+    discBtn.textContent = 'Disconnect'
+    discBtn.addEventListener('click', () => {
+      disconnectGoogle()
+      renderSyncView()
+    })
+
+    actions.append(syncBtn, clearBtn, discBtn)
+  } else {
+    const connectBtn = document.createElement('button')
+    connectBtn.type = 'button'
+    connectBtn.textContent = 'Connect to Google'
+    connectBtn.addEventListener('click', async () => {
+      connectBtn.disabled = true
+      setSyncMsg('Opening sign-in window…')
+      try {
+        await connectGoogle()
+        renderSyncView()
+      } catch (err) {
+        connectBtn.disabled = false
+        setSyncMsg(`Sign-in failed: ${err.message}`, true)
+      }
+    })
+
+    actions.append(connectBtn)
+  }
+
+  syncBodyEl.append(actions)
+
+  // --- Status message area ---
+  const msgP = document.createElement('p')
+  msgP.id = 'sync-msg'
+  msgP.className = 'settings-help'
+  msgP.style.display = 'none'
+  syncBodyEl.append(msgP)
+}
+
 function switchView(view) {
   activeView = view
   readerState.activeView = view
@@ -1311,6 +1465,7 @@ function switchView(view) {
   statsView.style.display = view === 'stats' ? '' : 'none'
   settingsView.style.display = view === 'settings' ? '' : 'none'
   aboutView.style.display = view === 'about' ? '' : 'none'
+  syncView.style.display = view === 'sync' ? '' : 'none'
   reader.setViewVisible(view === 'read' || view === 'queue')
   readerFooterControlsEl.style.display = view === 'read' || view === 'queue' ? '' : 'none'
   reviewQueueSummaryEl.style.display = view === 'queue' ? '' : 'none'
@@ -1332,6 +1487,7 @@ function switchView(view) {
     renderSettingsForm()
     renderSrsPreview()
   }
+  if (view === 'sync') renderSyncView()
   updateTopHeader()
 }
 
@@ -1341,6 +1497,13 @@ async function openCurrentBookForRead() {
   if (!book) {
     switchView('library')
     setStatus('No book is currently open.', 'warn')
+    return
+  }
+
+  const imported = await isBookImportedLocally(book.id)
+  if (!imported) {
+    switchView('library')
+    setStatus(`"${book.title}" hasn't been imported on this device yet. Use Import to load the EPUB file.`, 'warn')
     return
   }
 
@@ -1461,6 +1624,10 @@ async function init() {
     closeMenu()
     switchView('about')
   })
+  menuSyncEl.addEventListener('click', () => {
+    closeMenu()
+    switchView('sync')
+  })
   settingsFormEl.addEventListener('input', () => {
     if (readerThemeEl) {
       const chosenTheme = normalizeReaderTheme(readerThemeEl.value)
@@ -1511,4 +1678,6 @@ async function init() {
   }
 }
 
-init()
+if (!checkAuthCallback()) {
+  init()
+}

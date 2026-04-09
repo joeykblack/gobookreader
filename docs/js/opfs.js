@@ -35,6 +35,20 @@ async function getBookFilesDirectory(bookId) {
   return bookDir.getDirectoryHandle('files')
 }
 
+async function walkDirectory(dirHandle, basePath = '') {
+  const paths = []
+  for await (const [name, handle] of dirHandle.entries()) {
+    const fullPath = basePath ? `${basePath}/${name}` : name
+    if (handle.kind === 'directory') {
+      const nested = await walkDirectory(handle, fullPath)
+      paths.push(...nested)
+    } else {
+      paths.push(fullPath)
+    }
+  }
+  return paths
+}
+
 async function getBookFileHandle(bookId, relativePath) {
   const filesDir = await getBookFilesDirectory(bookId)
   const parts = normalizePath(relativePath)
@@ -77,6 +91,32 @@ export async function deleteBookFiles(bookId) {
   const root = await navigator.storage.getDirectory()
   const booksDir = await root.getDirectoryHandle('books', { create: true })
   await booksDir.removeEntry(bookId, { recursive: true })
+}
+
+/**
+ * Returns true if the book's EPUB files have been imported on this device
+ * (i.e. its OPFS directory exists). Returns false if the book only came from
+ * a sync and the EPUB has never been imported here.
+ */
+export async function isBookImportedLocally(bookId) {
+  try {
+    const root = await navigator.storage.getDirectory()
+    const booksDir = await root.getDirectoryHandle('books', { create: true })
+    await booksDir.getDirectoryHandle(bookId)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** Lists all relative EPUB file paths for a locally imported book. */
+export async function listBookFiles(bookId) {
+  try {
+    const filesDir = await getBookFilesDirectory(bookId)
+    return walkDirectory(filesDir)
+  } catch {
+    return []
+  }
 }
 
 export async function readBookFileBytes(bookId, relativePath) {
