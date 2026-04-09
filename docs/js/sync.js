@@ -287,34 +287,63 @@ async function buildLocalPayload() {
     getAllReviewEvents()
   ])
 
-  const bookFiles = {}
-  for (const book of books) {
-    if (!book?.id) continue
-    const imported = await isBookImportedLocally(book.id)
-    if (!imported) continue
-
-    const paths = await listBookFiles(book.id)
-    if (!paths.length) continue
-
-    const files = []
-    for (const path of paths) {
-      const bytes = await readBookFileBytes(book.id, path)
-      files.push({ path, data: bytesToBase64(bytes) })
-    }
-    if (files.length) {
-      bookFiles[book.id] = files
-    }
-  }
-
   return {
     books,
     sections,
     // Strip device-specific auto-increment IDs from review events
     reviews: reviewEvents.map(({ id: _id, ...rest }) => rest),
-    bookFiles,
+    bookFiles: {},
     srsSettings: JSON.parse(localStorage.getItem(SRS_SETTINGS_KEY) || '{}'),
     syncedAt: new Date().toISOString()
   }
+}
+
+async function snapshotBookFiles(bookId) {
+  const imported = await isBookImportedLocally(bookId)
+  if (!imported) return []
+
+  const paths = await listBookFiles(bookId)
+  if (!paths.length) return []
+
+  const files = []
+  for (const path of paths) {
+    const bytes = await readBookFileBytes(bookId, path)
+    files.push({ path, data: bytesToBase64(bytes) })
+  }
+  return files
+}
+
+function hasLocalChanges(local, remote, bookIdsNeedingUpload) {
+  const remoteBooksById = new Map((remote.books || []).map(b => [b.id, b]))
+  for (const b of local.books || []) {
+    const rb = remoteBooksById.get(b.id)
+    if (!rb) return true
+    if ((b.importedAt || '') > (rb.importedAt || '')) return true
+  }
+
+  const remoteSectionsById = new Map((remote.sections || []).map(s => [s.itemId, s]))
+  for (const s of local.sections || []) {
+    const rs = remoteSectionsById.get(s.itemId)
+    if (!rs) return true
+    const localTs = s?.lastReviewedAt || s?.createdAt || ''
+    const remoteTs = rs?.lastReviewedAt || rs?.createdAt || ''
+    if (localTs > remoteTs) return true
+  }
+
+  const remoteReviewKeys = new Set((remote.reviews || []).map(r => `${r.itemId}|${r.reviewedAt}`))
+  for (const r of local.reviews || []) {
+    if (!remoteReviewKeys.has(`${r.itemId}|${r.reviewedAt}`)) return true
+  }
+
+  if ((bookIdsNeedingUpload || []).length) return true
+
+  const remoteSettings = remote.srsSettings || {}
+  const localSettings = local.srsSettings || {}
+  if (JSON.stringify(remoteSettings) !== JSON.stringify({ ...remoteSettings, ...localSettings })) {
+    return true
+  }
+
+  return false
 }
 
 function mergePayloads(local, remote) {
@@ -402,6 +431,8 @@ async function applyPayload(payload) {
   if (payload.bookFiles && typeof payload.bookFiles === 'object') {
     for (const [bookId, files] of Object.entries(payload.bookFiles)) {
       if (!bookId || !Array.isArray(files) || !files.length) continue
+      const alreadyLocal = await isBookImportedLocally(bookId)
+      if (alreadyLocal) continue
       for (const file of files) {
         if (!file?.path || !file?.data) continue
         await writeBookFile(bookId, file.path, base64ToBytes(file.data))
@@ -430,10 +461,50 @@ export async function syncNow() {
   const fileId = await findSyncFileId(token)
 
   let merged
+  let shouldUpload = true
   if (fileId) {
     const remote = await downloadFile(token, fileId)
+
+    const remoteBookFiles = remote.bookFiles || {}
+    const bookIdsNeedingUpload = []
+    for (const b of local.books || []) {
+      if (!b?.id) continue
+      const imported = await isBookImportedLocally(b.id)
+      if (!imported) continue
+      if (!Array.isArray(remoteBookFiles[b.id]) || !remoteBookFiles[b.id].length) {
+        bookIdsNeedingUpload.push(b.id)
+      }
+    }
+
+    if (bookIdsNeedingUpload.length) {
+      for (const bookId of bookIdsNeedingUpload) {
+        local.bookFiles[bookId] = await snapshotBookFiles(bookId)
+      }
+    }
+
+    shouldUpload = hasLocalChanges(local, remote, bookIdsNeedingUpload)
     merged = mergePayloads(local, remote)
+
+    if (!shouldUpload) {
+      await applyPayload(remote)
+      state.lastSyncedAt = remote.syncedAt || new Date().toISOString()
+      saveSyncState(state)
+      return {
+        ok: true,
+        syncedAt: state.lastSyncedAt,
+        stats: {
+          books: remote.books?.length || 0,
+          sections: remote.sections?.length || 0,
+          reviews: remote.reviews?.length || 0,
+          booksWithFiles: Object.keys(remote.bookFiles || {}).length
+        }
+      }
+    }
   } else {
+    for (const b of local.books || []) {
+      if (!b?.id) continue
+      local.bookFiles[b.id] = await snapshotBookFiles(b.id)
+    }
     merged = local
   }
 
