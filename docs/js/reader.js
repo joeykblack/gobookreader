@@ -213,7 +213,13 @@ export function createReaderController({
     const pdfDoc = await getPdfDocument(book)
     const page = await pdfDoc.getPage(pageNumber)
 
-    const viewport = page.getViewport({ scale: 1.35 })
+    const baseViewport = page.getViewport({ scale: 1 })
+    const frameWidth = Math.max(320, Number(frameEl?.clientWidth || 0))
+    const horizontalPadding = 12
+    const cssTargetWidth = Math.max(280, frameWidth - horizontalPadding * 2)
+    const cssScale = cssTargetWidth / Math.max(1, baseViewport.width)
+    const dpr = Math.max(1, Math.min(2, Number(window.devicePixelRatio || 1)))
+    const viewport = page.getViewport({ scale: cssScale * dpr })
     const canvas = document.createElement('canvas')
     canvas.width = Math.ceil(viewport.width)
     canvas.height = Math.ceil(viewport.height)
@@ -247,10 +253,10 @@ export function createReaderController({
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-      body { margin: 0; padding: 0.75rem; background: #0b1224; color: #e5e7eb; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-      .page-wrap { display: flex; justify-content: center; }
-      .page-wrap img { max-width: 100%; height: auto; display: block; border: 1px solid #334155; border-radius: 6px; background: #fff; }
-      .srs { border-top: 1px solid #334155; margin-top: 0.8rem; padding-top: 0.65rem; display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+      body { margin: 0; padding: 0; background: #0b1224; color: #e5e7eb; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+      .page-wrap { width: 100%; }
+      .page-wrap img { width: 100%; height: auto; display: block; border: 1px solid #334155; border-radius: 0; background: #fff; box-sizing: border-box; }
+      .srs { border-top: 1px solid #334155; margin-top: 0.8rem; padding: 0.65rem 0.75rem 0.8rem; display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
       .srs-label { color: #cbd5e1; font-size: 0.85rem; margin-right: 0.15rem; }
       .srs-btn.is-active { background: #334155 !important; color: #ffffff !important; border-color: #0f172a !important; }
     </style>
