@@ -32,6 +32,10 @@ const sortImportedAtEl = document.getElementById('sort-importedAt')
 const readerRootEl = document.getElementById('reader-panel')
 const appMainTitleEl = document.getElementById('app-main-title')
 const appSubtitleEl = document.getElementById('app-subtitle')
+const pdfZoomControlsEl = document.getElementById('pdf-zoom-controls')
+const pdfZoomOutEl = document.getElementById('pdf-zoom-out')
+const pdfZoomInEl = document.getElementById('pdf-zoom-in')
+const pdfZoomLabelEl = document.getElementById('pdf-zoom-label')
 const readerTitleEl = document.getElementById('reader-title')
 const readerChapterSelectEl = document.getElementById('reader-chapter-select')
 const readerPageIndicatorEl = document.getElementById('reader-page-indicator')
@@ -86,6 +90,9 @@ const srsPreviewEl = document.getElementById('srs-preview')
 
 const READER_STATE_KEY = 'gorecall.readerState.v1'
 const SRS_SETTINGS_KEY = 'gorecall.srsSettings.v1'
+const PDF_ZOOM_MIN = 0.6
+const PDF_ZOOM_MAX = 2.4
+const PDF_ZOOM_STEP = 0.05
 
 function normalizeReaderTheme(value) {
   const theme = String(value || '').trim().toLowerCase()
@@ -255,6 +262,12 @@ function loadReaderState() {
   }
 }
 
+function normalizePdfZoom(value) {
+  const num = Number(value)
+  if (!Number.isFinite(num)) return 1
+  return Math.max(PDF_ZOOM_MIN, Math.min(PDF_ZOOM_MAX, Number(num.toFixed(2))))
+}
+
 let readerState = loadReaderState()
 
 function saveReaderState() {
@@ -264,7 +277,10 @@ function saveReaderState() {
 function ensureBookState(bookId) {
   if (!bookId) return null
   if (!readerState.books[bookId]) {
-    readerState.books[bookId] = { chapterFile: '', sectionName: '' }
+    readerState.books[bookId] = { chapterFile: '', sectionName: '', pdfZoom: 1 }
+  }
+  if (!Number.isFinite(Number(readerState.books[bookId].pdfZoom))) {
+    readerState.books[bookId].pdfZoom = 1
   }
   return readerState.books[bookId]
 }
@@ -297,6 +313,19 @@ function setBookSection(bookId, sectionName) {
 function setReaderTheme(theme) {
   readerState.readerTheme = normalizeReaderTheme(theme)
   saveReaderState()
+}
+
+function getBookPdfZoom(bookId) {
+  const state = ensureBookState(bookId)
+  return normalizePdfZoom(state?.pdfZoom)
+}
+
+function setBookPdfZoom(bookId, zoom) {
+  const state = ensureBookState(bookId)
+  if (!state) return 1
+  state.pdfZoom = normalizePdfZoom(zoom)
+  saveReaderState()
+  return state.pdfZoom
 }
 
 function getBookState(bookId) {
@@ -354,11 +383,25 @@ async function updateTopHeader() {
   if (activeView !== 'read' && activeView !== 'queue') {
     appMainTitleEl.textContent = 'GoBooks Reader'
     appSubtitleEl.textContent = ''
+    if (pdfZoomControlsEl) pdfZoomControlsEl.hidden = true
     return
   }
 
   const location = reader.getCurrentLocation()
   const currentBook = location ? books.find(b => b.id === location.bookId) : null
+  const isPdfOpen = isPdfBook(currentBook)
+
+  if (pdfZoomControlsEl && pdfZoomLabelEl && pdfZoomOutEl && pdfZoomInEl) {
+    if (isPdfOpen) {
+      const zoom = getBookPdfZoom(currentBook.id)
+      pdfZoomControlsEl.hidden = false
+      pdfZoomLabelEl.textContent = `${Math.round(zoom * 100)}%`
+      pdfZoomOutEl.disabled = zoom <= PDF_ZOOM_MIN + 0.001
+      pdfZoomInEl.disabled = zoom >= PDF_ZOOM_MAX - 0.001
+    } else {
+      pdfZoomControlsEl.hidden = true
+    }
+  }
 
   if (activeView === 'queue') {
     appMainTitleEl.textContent = `Reviewing: ${currentBook?.title || 'Unknown book'}`
@@ -656,6 +699,7 @@ async function openBookAtSavedPosition(book) {
   }
   const persisted = getBookState(book.id)
   const chapterIndex = book.chapters.findIndex(ch => ch.href === persisted.chapterFile)
+  reader.setPdfZoom(isPdfBook(book) ? getBookPdfZoom(book.id) : 1, { rerender: false })
   await reader.openBook(book, chapterIndex >= 0 ? chapterIndex : 0)
 
   if (persisted.sectionName) {
@@ -1050,6 +1094,7 @@ async function openReviewItem(review, targetView = 'read') {
   if (activeView !== targetView) {
     switchView(targetView)
   }
+  reader.setPdfZoom(isPdfBook(book) ? getBookPdfZoom(book.id) : 1, { rerender: false })
   await reader.openBook(book, chapterIndex)
   if (!isPdfBook(book)) {
     scrollIframeToSection(review.sectionName)
@@ -1599,6 +1644,24 @@ async function init() {
   }
 
   importButtonEl.addEventListener('click', importSelectedFile)
+  pdfZoomOutEl?.addEventListener('click', () => {
+    const location = reader.getCurrentLocation()
+    if (!location) return
+    const book = books.find(b => b.id === location.bookId)
+    if (!isPdfBook(book)) return
+    const next = setBookPdfZoom(book.id, getBookPdfZoom(book.id) - PDF_ZOOM_STEP)
+    reader.setPdfZoom(next)
+    updateTopHeader()
+  })
+  pdfZoomInEl?.addEventListener('click', () => {
+    const location = reader.getCurrentLocation()
+    if (!location) return
+    const book = books.find(b => b.id === location.bookId)
+    if (!isPdfBook(book)) return
+    const next = setBookPdfZoom(book.id, getBookPdfZoom(book.id) + PDF_ZOOM_STEP)
+    reader.setPdfZoom(next)
+    updateTopHeader()
+  })
   sortTitleEl?.addEventListener('click', () => setBooksSort('title'))
   sortAuthorEl?.addEventListener('click', () => setBooksSort('author'))
   sortPublicationDateEl?.addEventListener('click', () => setBooksSort('publicationDate'))

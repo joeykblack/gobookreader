@@ -92,6 +92,8 @@ export function createReaderController({
   reviewStateProvider,
   onLocationChange
 }) {
+  const MIN_PDF_ZOOM = 0.6
+  const MAX_PDF_ZOOM = 2.4
   let currentBook = null
   let chapterIndex = 0
   let pendingHash = ''
@@ -102,6 +104,7 @@ export function createReaderController({
   const activeAssetUrls = new Set()
   let pdfDocPromise = null
   let pdfDocBookId = null
+  let pdfZoom = 1
 
   function normalizeTheme(value) {
     const theme = String(value || '').trim().toLowerCase()
@@ -177,6 +180,12 @@ export function createReaderController({
     return `Page ${pageNumber}`
   }
 
+  function normalizePdfZoom(value) {
+    const num = Number(value)
+    if (!Number.isFinite(num)) return 1
+    return Math.max(MIN_PDF_ZOOM, Math.min(MAX_PDF_ZOOM, Number(num.toFixed(2))))
+  }
+
   function getPdfJsLib() {
     const lib = window.pdfjsLib
     if (!lib) {
@@ -216,7 +225,8 @@ export function createReaderController({
     const baseViewport = page.getViewport({ scale: 1 })
     const frameWidth = Math.max(320, Number(frameEl?.clientWidth || 0))
     const horizontalPadding = 12
-    const cssTargetWidth = Math.max(280, frameWidth - horizontalPadding * 2)
+    const baseWidth = Math.max(280, frameWidth - horizontalPadding * 2)
+    const cssTargetWidth = Math.max(180, baseWidth * normalizePdfZoom(pdfZoom))
     const cssScale = cssTargetWidth / Math.max(1, baseViewport.width)
     const dpr = Math.max(1, Math.min(2, Number(window.devicePixelRatio || 1)))
     const viewport = page.getViewport({ scale: cssScale * dpr })
@@ -254,8 +264,8 @@ export function createReaderController({
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       body { margin: 0; padding: 0; background: #0b1224; color: #e5e7eb; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-      .page-wrap { width: 100%; }
-      .page-wrap img { width: 100%; height: auto; display: block; border: 1px solid #334155; border-radius: 0; background: #fff; box-sizing: border-box; }
+      .page-wrap { width: 100%; overflow-x: auto; }
+      .page-wrap img { width: ${Math.round(cssTargetWidth)}px; max-width: none; height: auto; display: block; border: 1px solid #334155; border-radius: 0; background: #fff; box-sizing: border-box; margin: 0 auto; }
       .srs { border-top: 1px solid #334155; margin-top: 0.8rem; padding: 0.65rem 0.75rem 0.8rem; display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
       .srs-label { color: #cbd5e1; font-size: 0.85rem; margin-right: 0.15rem; }
       .srs-btn.is-active { background: #334155 !important; color: #ffffff !important; border-color: #0f172a !important; }
@@ -780,6 +790,19 @@ export function createReaderController({
     isOpen(bookId) {
       if (bookId !== undefined) return currentBook?.id === bookId
       return !!currentBook
+    },
+    isPdfOpen() {
+      return !!(currentBook && isPdfBook(currentBook))
+    },
+    setPdfZoom(zoom, { rerender = true } = {}) {
+      pdfZoom = normalizePdfZoom(zoom)
+      if (rerender && currentBook && isPdfBook(currentBook)) {
+        renderCurrentChapter()
+      }
+      return pdfZoom
+    },
+    getPdfZoom() {
+      return normalizePdfZoom(pdfZoom)
     },
     async setTheme(theme) {
       activeTheme = normalizeTheme(theme)

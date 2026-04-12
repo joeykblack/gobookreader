@@ -92,6 +92,31 @@
         overflow: hidden;
         text-overflow: ellipsis;
       }
+      .bar-subtitle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.6rem;
+      }
+      .pdf-zoom-controls {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin-top: 0.15rem;
+      }
+      .pdf-zoom-controls[hidden] {
+        display: none;
+      }
+      .pdf-zoom-controls button {
+        min-width: 1.9rem;
+        padding: 0.25rem 0.4rem;
+      }
+      .pdf-zoom-label {
+        color: #cbd5e1;
+        font-size: 0.88rem;
+        min-width: 3.9rem;
+        text-align: center;
+      }
       .app-footer .bar-inner {
         padding: 0.7rem 0 calc(0.7rem + env(safe-area-inset-bottom));
       }
@@ -646,7 +671,14 @@
       <div class="bar-inner">
         <div class="bar-title-wrap">
           <div id="app-main-title" class="bar-title">GoBooks Reader</div>
-          <div id="app-subtitle" class="bar-subtitle"></div>
+          <div class="bar-subtitle-row">
+            <div id="app-subtitle" class="bar-subtitle"></div>
+            <div id="pdf-zoom-controls" class="pdf-zoom-controls" hidden>
+              <button id="pdf-zoom-out" type="button" aria-label="Zoom out">−</button>
+              <span id="pdf-zoom-label" class="pdf-zoom-label">100%</span>
+              <button id="pdf-zoom-in" type="button" aria-label="Zoom in">+</button>
+            </div>
+          </div>
           <div id="reader-title" style="display:none;"></div>
         </div>
         <div class="menu-wrap">
