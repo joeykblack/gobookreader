@@ -300,6 +300,7 @@ function setBookChapter(bookId, chapterFile) {
   if (!state) return
   state.chapterFile = chapterFile || ''
   state.sectionName = ''
+  state.updatedAt = new Date().toISOString()
   saveReaderState()
 }
 
@@ -307,6 +308,7 @@ function setBookSection(bookId, sectionName) {
   const state = ensureBookState(bookId)
   if (!state) return
   state.sectionName = sectionName || ''
+  state.updatedAt = new Date().toISOString()
   saveReaderState()
 }
 
@@ -1451,6 +1453,7 @@ function renderSyncView() {
       setSyncMsg('Syncing…')
       try {
         const result = await syncNow()
+        readerState = loadReaderState()
         renderSyncView()
         setSyncMsg(
           `Synced — ${result.stats.books} books, ${result.stats.sections} sections, ${result.stats.reviews} review events.`

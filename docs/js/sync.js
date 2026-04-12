@@ -3,6 +3,7 @@ import { isBookImportedLocally, listBookFiles, readBookFileBytes, writeBookFile 
 
 const SYNC_STORAGE_KEY = 'gorecall.googleSync.v1'
 const SRS_SETTINGS_KEY = 'gorecall.srsSettings.v1'
+const READER_STATE_KEY = 'gorecall.readerState.v1'
 const SYNC_FILE_NAME = 'gobooks-sync.json'
 
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
@@ -288,6 +289,25 @@ async function uploadFile(accessToken, fileId, payload) {
 // Payload helpers
 // ---------------------------------------------------------------------------
 
+function getLocalBookPositions() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(READER_STATE_KEY) || '{}')
+    const booksMap = parsed.books && typeof parsed.books === 'object' ? parsed.books : {}
+    const positions = {}
+    for (const [bookId, state] of Object.entries(booksMap)) {
+      if (!bookId || !state.chapterFile) continue
+      positions[bookId] = {
+        chapterFile: state.chapterFile || '',
+        sectionName: state.sectionName || '',
+        updatedAt: state.updatedAt || ''
+      }
+    }
+    return positions
+  } catch {
+    return {}
+  }
+}
+
 async function buildLocalPayload() {
   const [books, sections, reviewEvents] = await Promise.all([
     getAllBooks(),
@@ -302,6 +322,7 @@ async function buildLocalPayload() {
     reviews: reviewEvents.map(({ id: _id, ...rest }) => rest),
     bookFiles: {},
     srsSettings: JSON.parse(localStorage.getItem(SRS_SETTINGS_KEY) || '{}'),
+    bookPositions: getLocalBookPositions(),
     syncedAt: new Date().toISOString()
   }
 }
@@ -349,6 +370,13 @@ function hasLocalChanges(local, remote, bookIdsNeedingUpload) {
   const localSettings = local.srsSettings || {}
   if (JSON.stringify(remoteSettings) !== JSON.stringify({ ...remoteSettings, ...localSettings })) {
     return true
+  }
+
+  const remotePositions = remote.bookPositions || {}
+  for (const [bookId, pos] of Object.entries(local.bookPositions || {})) {
+    const rp = remotePositions[bookId]
+    if (!rp) return true
+    if ((pos.updatedAt || '') > (rp.updatedAt || '')) return true
   }
 
   return false
@@ -404,12 +432,27 @@ function mergePayloads(local, remote) {
     }
   }
 
+  // Book reading positions: newest updatedAt wins
+  const mergedPositions = {}
+  const allPosIds = new Set([
+    ...Object.keys(remote.bookPositions || {}),
+    ...Object.keys(local.bookPositions || {})
+  ])
+  for (const bookId of allPosIds) {
+    const r = remote.bookPositions?.[bookId]
+    const l = local.bookPositions?.[bookId]
+    if (!r) { mergedPositions[bookId] = l; continue }
+    if (!l) { mergedPositions[bookId] = r; continue }
+    mergedPositions[bookId] = (l.updatedAt || '') >= (r.updatedAt || '') ? l : r
+  }
+
   return {
     books: [...booksById.values()],
     sections: [...sectionsById.values()],
     reviews: mergedReviews,
     bookFiles: mergedBookFiles,
     srsSettings,
+    bookPositions: mergedPositions,
     syncedAt: new Date().toISOString()
   }
 }
@@ -445,6 +488,33 @@ async function applyPayload(payload) {
         if (!file?.path || !file?.data) continue
         await writeBookFile(bookId, file.path, base64ToBytes(file.data))
       }
+    }
+  }
+
+  if (payload.bookPositions && typeof payload.bookPositions === 'object') {
+    try {
+      const raw = JSON.parse(localStorage.getItem(READER_STATE_KEY) || '{}')
+      const localBooks = raw.books && typeof raw.books === 'object' ? raw.books : {}
+      let changed = false
+      for (const [bookId, pos] of Object.entries(payload.bookPositions)) {
+        if (!bookId || !pos?.chapterFile) continue
+        const existing = localBooks[bookId]
+        if (!existing || (pos.updatedAt || '') > (existing.updatedAt || '')) {
+          localBooks[bookId] = {
+            ...(existing || {}),
+            chapterFile: pos.chapterFile,
+            sectionName: pos.sectionName || '',
+            updatedAt: pos.updatedAt || ''
+          }
+          changed = true
+        }
+      }
+      if (changed) {
+        raw.books = localBooks
+        localStorage.setItem(READER_STATE_KEY, JSON.stringify(raw))
+      }
+    } catch {
+      // Ignore reader state errors
     }
   }
 }
