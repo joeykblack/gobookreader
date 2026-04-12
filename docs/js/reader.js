@@ -1,6 +1,8 @@
 import { readBookFileBytes, readBookFileText } from './opfs.js'
 import { enhanceChapter } from './enhance.js'
 
+const PDF_WORKER_SRC = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'
+
 function dirname(path) {
   const idx = path.lastIndexOf('/')
   return idx >= 0 ? path.slice(0, idx) : ''
@@ -98,6 +100,8 @@ export function createReaderController({
   let viewVisible = true
   let activeTheme = 'light'
   const activeAssetUrls = new Set()
+  let pdfDocPromise = null
+  let pdfDocBookId = null
 
   function normalizeTheme(value) {
     const theme = String(value || '').trim().toLowerCase()
@@ -158,6 +162,126 @@ export function createReaderController({
     else doc.documentElement?.prepend(style)
   }
 
+  function isPdfBook(book) {
+    return String(book?.format || '').toLowerCase() === 'pdf'
+  }
+
+  function getPdfPageNumber(chapterHref) {
+    const match = String(chapterHref || '').match(/^pdf-page-(\d+)$/i)
+    if (!match) return null
+    const page = Number(match[1])
+    return Number.isFinite(page) && page > 0 ? page : null
+  }
+
+  function getPdfSectionName(pageNumber) {
+    return `Page ${pageNumber}`
+  }
+
+  function getPdfJsLib() {
+    const lib = window.pdfjsLib
+    if (!lib) {
+      throw new Error('pdf.js failed to load from CDN')
+    }
+    if (lib.GlobalWorkerOptions && !lib.GlobalWorkerOptions.workerSrc) {
+      lib.GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC
+    }
+    return lib
+  }
+
+  async function getPdfDocument(book) {
+    if (!isPdfBook(book)) return null
+
+    if (pdfDocBookId === book.id && pdfDocPromise) {
+      return pdfDocPromise
+    }
+
+    const pdfPath = book.pdfPath || 'book.pdf'
+    const bytes = await readBookFileBytes(book.id, pdfPath)
+    const pdfjsLib = getPdfJsLib()
+    const loadingTask = pdfjsLib.getDocument({ data: bytes })
+    pdfDocBookId = book.id
+    pdfDocPromise = loadingTask.promise
+    return pdfDocPromise
+  }
+
+  async function buildPdfPageHtml(book, chapter) {
+    const pageNumber = getPdfPageNumber(chapter?.href)
+    if (!pageNumber) {
+      throw new Error(`Invalid PDF page token: ${chapter?.href || 'unknown'}`)
+    }
+
+    const pdfDoc = await getPdfDocument(book)
+    const page = await pdfDoc.getPage(pageNumber)
+
+    const viewport = page.getViewport({ scale: 1.35 })
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.ceil(viewport.width)
+    canvas.height = Math.ceil(viewport.height)
+    const ctx = canvas.getContext('2d', { alpha: false })
+    await page.render({ canvasContext: ctx, viewport }).promise
+
+    const pageImage = canvas.toDataURL('image/png')
+    const sectionName = getPdfSectionName(pageNumber)
+
+    const reviewStates = reviewStateProvider
+      ? await reviewStateProvider(book.id, chapter.href)
+      : new Map()
+    const activeRating = reviewStates.get(sectionName) || ''
+
+    const buttonStyle = 'padding:0.28em 0.65em;font-size:0.82em;cursor:pointer;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;color:#1e293b;'
+
+    const button = rating => {
+      const activeClass = activeRating === rating ? ' is-active' : ''
+      // Use data-rating attribute; the click handler is wired in the <script> block below
+      // to avoid double-quote conflicts inside onclick="..." HTML attributes.
+      return `<button class="srs-btn${activeClass}" data-rating="${rating}" style="${buttonStyle}">${rating}</button>`
+    }
+
+    // Embed sectionName as JSON inside a <script> block — safe because it's
+    // not inside an HTML attribute, so JSON double-quotes are not a problem.
+    const sectionNameJson = JSON.stringify(sectionName)
+
+    return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { margin: 0; padding: 0.75rem; background: #0b1224; color: #e5e7eb; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+      .page-wrap { display: flex; justify-content: center; }
+      .page-wrap img { max-width: 100%; height: auto; display: block; border: 1px solid #334155; border-radius: 6px; background: #fff; }
+      .srs { border-top: 1px solid #334155; margin-top: 0.8rem; padding-top: 0.65rem; display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+      .srs-label { color: #cbd5e1; font-size: 0.85rem; margin-right: 0.15rem; }
+      .srs-btn.is-active { background: #334155 !important; color: #ffffff !important; border-color: #0f172a !important; }
+    </style>
+  </head>
+  <body>
+    <div class="page-wrap"><img src="${pageImage}" alt="${sectionName}" /></div>
+    <div class="srs">
+      <span class="srs-label">${sectionName}:</span>
+      ${button('Mark')}
+      ${button('Again')}
+      ${button('Hard')}
+      ${button('Good')}
+      ${button('Easy')}
+    </div>
+    <script>
+      (function () {
+        var sectionName = ${sectionNameJson};
+        var buttons = Array.from(document.querySelectorAll('.srs-btn'));
+        buttons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            buttons.forEach(function (other) { other.classList.remove('is-active'); });
+            btn.classList.add('is-active');
+            parent.postMessage({ type: 'srs', sectionName: sectionName, rating: btn.dataset.rating }, '*');
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>`
+  }
+
   function setStatus(message, kind = '') {
     if (statusCallback) {
       statusCallback(message, kind)
@@ -212,7 +336,7 @@ export function createReaderController({
     nextButtonEl.disabled = !hasBook || chapterIndex >= count - 1
     selectEl.disabled = !hasBook || count === 0
     if (contentsButtonEl) {
-      contentsButtonEl.disabled = !hasBook || getContentsChapterIndex(currentBook) < 0
+      contentsButtonEl.disabled = !hasBook || isPdfBook(currentBook) || getContentsChapterIndex(currentBook) < 0
     }
 
     if (!hasBook) {
@@ -264,7 +388,11 @@ export function createReaderController({
     currentBook.chapters.forEach(chapter => {
       const option = document.createElement('option')
       option.value = String(chapter.index)
-      option.textContent = `${chapter.index + 1}. ${chapter.href}`
+      if (isPdfBook(currentBook)) {
+        option.textContent = `Page ${chapter.index + 1}`
+      } else {
+        option.textContent = `${chapter.index + 1}. ${chapter.href}`
+      }
       selectEl.append(option)
     })
 
@@ -444,19 +572,26 @@ export function createReaderController({
     if (!chapter) return
 
     revokeUrls()
-    setStatus(`Loading chapter ${chapterIndex + 1}…`)
+    setStatus(isPdfBook(currentBook) ? `Loading page ${chapterIndex + 1}…` : `Loading chapter ${chapterIndex + 1}…`)
 
     try {
-      const html = await buildChapterDocument(currentBook, chapter)
-      const chapterType = chapter.mediaType || inferMimeType(chapter.href)
-      const chapterBlob = new Blob([html], { type: chapterType })
-      activeChapterUrl = URL.createObjectURL(chapterBlob)
-      frameEl.src = activeChapterUrl
+      if (isPdfBook(currentBook)) {
+        const html = await buildPdfPageHtml(currentBook, chapter)
+        frameEl.src = 'about:blank'
+        frameEl.srcdoc = html
+      } else {
+        const html = await buildChapterDocument(currentBook, chapter)
+        const chapterType = chapter.mediaType || inferMimeType(chapter.href)
+        const chapterBlob = new Blob([html], { type: chapterType })
+        activeChapterUrl = URL.createObjectURL(chapterBlob)
+        frameEl.removeAttribute('srcdoc')
+        frameEl.src = activeChapterUrl
+      }
 
       const hashToScroll = pendingHash
       pendingHash = ''
 
-      if (hashToScroll) {
+      if (hashToScroll && !isPdfBook(currentBook)) {
         const scrollOnLoad = () => {
           try {
             const doc = frameEl.contentDocument || frameEl.contentWindow?.document
@@ -479,6 +614,7 @@ export function createReaderController({
       }
 
       const wireLinksOnLoad = () => {
+        if (isPdfBook(currentBook)) return
         try {
           const doc = frameEl.contentDocument || frameEl.contentWindow?.document
           if (!doc || !currentBook) return
@@ -514,7 +650,11 @@ export function createReaderController({
       frameEl.addEventListener('load', wireLinksOnLoad, { once: true })
 
       updateControls()
-      setStatus(`Reading: ${currentBook.title} / ${chapter.href}`, 'ok')
+      if (isPdfBook(currentBook)) {
+        setStatus(`Reading: ${currentBook.title} / Page ${chapterIndex + 1}`, 'ok')
+      } else {
+        setStatus(`Reading: ${currentBook.title} / ${chapter.href}`, 'ok')
+      }
 
       if (onLocationChange) {
         onLocationChange({
@@ -530,8 +670,15 @@ export function createReaderController({
 
   async function openBook(book, startIndex = 0, startHash = '') {
     if (!book?.chapters?.length) {
-      setStatus('This book has no readable spine chapters.', 'warn')
+      setStatus(isPdfBook(book) ? 'This PDF has no readable pages.' : 'This book has no readable spine chapters.', 'warn')
       return
+    }
+
+    if (!isPdfBook(book)) {
+      if (pdfDocBookId !== null && pdfDocBookId !== book.id) {
+        pdfDocBookId = null
+        pdfDocPromise = null
+      }
     }
 
     currentBook = book
@@ -548,6 +695,7 @@ export function createReaderController({
     currentBook = null
     chapterIndex = 0
     revokeUrls()
+    frameEl.removeAttribute('srcdoc')
     frameEl.src = 'about:blank'
     setVisible(false)
     updateControls()
@@ -571,6 +719,7 @@ export function createReaderController({
   if (contentsButtonEl) {
     contentsButtonEl.addEventListener('click', async () => {
       if (!currentBook) return
+      if (isPdfBook(currentBook)) return
       const contentsIndex = getContentsChapterIndex(currentBook)
       if (contentsIndex < 0) return
 

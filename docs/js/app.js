@@ -13,6 +13,7 @@ import {
   getAllReviewEvents
 } from './db.js'
 import { importEpubFile } from './epub.js'
+import { importPdfFile } from './pdf.js'
 import { isOpfsSupported, deleteBookFiles, isBookImportedLocally } from './opfs.js'
 import { createReaderController } from './reader.js'
 import { createReviewItem } from './srs.js'
@@ -473,6 +474,16 @@ function getChapterIndexForHref(book, href) {
   return book.chapters.findIndex(ch => ch.href === path)
 }
 
+function isPdfBook(book) {
+  return String(book?.format || '').toLowerCase() === 'pdf'
+}
+
+function getPdfSectionFromChapterFile(chapterFile) {
+  const match = String(chapterFile || '').match(/^pdf-page-(\d+)$/i)
+  if (!match) return ''
+  return `Page ${Number(match[1])}`
+}
+
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) {
     swStatusEl.textContent = 'Service worker: not supported in this browser.'
@@ -518,7 +529,7 @@ async function renderBooks() {
     selectBtn.type = 'button'
     selectBtn.className = 'book-btn'
     selectBtn.disabled = !isLocal
-    selectBtn.title = isLocal ? book.title : 'Import this EPUB on this device to read it'
+    selectBtn.title = isLocal ? book.title : 'Import this file on this device to read it'
     if (isLocal) {
       selectBtn.textContent = book.title
     } else {
@@ -640,7 +651,7 @@ function updateSortHeaderIndicators() {
 async function openBookAtSavedPosition(book) {
   const imported = await isBookImportedLocally(book.id)
   if (!imported) {
-    setStatus(`"${book.title}" has not been imported on this device. Go to Import and load the EPUB file.`, 'warn')
+    setStatus(`"${book.title}" has not been imported on this device. Go to Import and load the file.`, 'warn')
     return
   }
   const persisted = getBookState(book.id)
@@ -690,7 +701,10 @@ function attachSectionTracking() {
       const location = reader.getCurrentLocation()
       if (!location) return
       setLastReadBookId(location.bookId)
-      const sectionName = findCurrentSectionName(iframeDoc)
+      const currentBook = books.find(b => b.id === location.bookId)
+      const sectionName = isPdfBook(currentBook)
+        ? getPdfSectionFromChapterFile(location.chapterFile)
+        : findCurrentSectionName(iframeDoc)
       setBookSection(location.bookId, sectionName)
     }
 
@@ -1021,6 +1035,12 @@ async function openReviewItem(review, targetView = 'read') {
   const book = books.find(b => b.id === review.bookId)
   if (!book) { setStatus('Book not found.', 'warn'); return }
 
+  const imported = await isBookImportedLocally(book.id)
+  if (!imported) {
+    setStatus(`"${book.title}" is not imported on this device yet. Import the file to review it.`, 'warn')
+    return
+  }
+
   const chapterIndex = book.chapters.findIndex(ch => ch.href === review.chapterFile)
   if (chapterIndex < 0) { setStatus('Chapter not found.', 'warn'); return }
 
@@ -1031,7 +1051,9 @@ async function openReviewItem(review, targetView = 'read') {
     switchView(targetView)
   }
   await reader.openBook(book, chapterIndex)
-  scrollIframeToSection(review.sectionName)
+  if (!isPdfBook(book)) {
+    scrollIframeToSection(review.sectionName)
+  }
   setStatus(`Reviewing: "${review.sectionName}" from ${book.title}`, 'ok')
 }
 
@@ -1485,7 +1507,7 @@ async function openCurrentBookForRead() {
   const imported = await isBookImportedLocally(book.id)
   if (!imported) {
     switchView('library')
-    setStatus(`"${book.title}" hasn't been imported on this device yet. Use Import to load the EPUB file.`, 'warn')
+    setStatus(`"${book.title}" hasn't been imported on this device yet. Use Import to load the file.`, 'warn')
     return
   }
 
@@ -1520,18 +1542,28 @@ async function scrollIframeToSection(sectionName) {
   }
 }
 
-async function importSelectedEpub() {
+async function importSelectedFile() {
   const file = importInputEl.files?.[0]
   if (!file) {
-    setStatus('Choose an EPUB file first.', 'warn')
+    setStatus('Choose an EPUB or PDF file first.', 'warn')
+    return
+  }
+
+  const name = String(file.name || '').toLowerCase()
+  const isPdf = name.endsWith('.pdf') || file.type === 'application/pdf'
+  const isEpub = name.endsWith('.epub') || file.type === 'application/epub+zip'
+  if (!isPdf && !isEpub) {
+    setStatus('Unsupported file type. Please import an EPUB or PDF.', 'warn')
     return
   }
 
   importButtonEl.disabled = true
-  setStatus('Importing EPUB…')
+  setStatus(isPdf ? 'Importing PDF…' : 'Importing EPUB…')
 
   try {
-    const book = await importEpubFile(file, msg => setStatus(msg))
+    const book = isPdf
+      ? await importPdfFile(file, msg => setStatus(msg))
+      : await importEpubFile(file, msg => setStatus(msg))
     await upsertBook(book)
     selectedBookId = book.id
     setSelectedBookId(book.id)
@@ -1563,10 +1595,10 @@ async function init() {
   if (!isOpfsSupported()) {
     setStatus('OPFS is not supported in this browser. Use a Chromium-based browser.', 'warn')
   } else {
-    setStatus('Ready. Import an EPUB and open a chapter to read.')
+    setStatus('Ready. Import an EPUB or PDF and start reading.')
   }
 
-  importButtonEl.addEventListener('click', importSelectedEpub)
+  importButtonEl.addEventListener('click', importSelectedFile)
   sortTitleEl?.addEventListener('click', () => setBooksSort('title'))
   sortAuthorEl?.addEventListener('click', () => setBooksSort('author'))
   sortPublicationDateEl?.addEventListener('click', () => setBooksSort('publicationDate'))

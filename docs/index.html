@@ -671,9 +671,9 @@
       <p id="app-status" style="display:none;"></p>
 
       <section id="import-view" class="panel app-section" style="display: none;">
-        <h2 style="margin-top: 0;">Import EPUB</h2>
+        <h2 style="margin-top: 0;">Import EPUB or PDF</h2>
         <div class="controls">
-          <input id="epub-file" type="file" accept=".epub,application/epub+zip" />
+          <input id="epub-file" type="file" accept=".epub,.pdf,application/epub+zip,application/pdf" />
           <button id="import-button" type="button">Import</button>
         </div>
       </section>
@@ -861,6 +861,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dexie@4.0.8/dist/dexie.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
     <script type="module">
       const appStatus = document.getElementById('app-status')
 
