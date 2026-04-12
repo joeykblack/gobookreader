@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gobooks-reader-v100';
+const CACHE_NAME = 'gobooks-reader-v102';
 const APP_SHELL = [
   './',
   './index.html',
@@ -34,6 +34,11 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return
+
+  const url = new URL(event.request.url)
+  // Never intercept cross-origin requests (e.g. Google Drive API). Caching those
+  // can serve stale sync payloads and hide newer remote updates.
+  if (url.origin !== self.location.origin) return
 
   event.respondWith(
     caches.match(event.request).then(cached => {
