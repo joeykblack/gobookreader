@@ -565,9 +565,10 @@ async function applyPayload(payload) {
  * Requires a valid token to be stored (call connectGoogle() first).
  * Returns { ok, syncedAt, stats: { books, sections, reviews } }.
  */
-export async function syncNow() {
+export async function syncNow(options = {}) {
+  const interactiveFallback = options.interactiveFallback !== false
   const state = loadSyncState()
-  await ensureValidToken(state, { interactiveFallback: true })
+  await ensureValidToken(state, { interactiveFallback })
 
   const token = state.accessToken
   const local = await buildLocalPayload()

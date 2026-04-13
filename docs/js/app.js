@@ -340,6 +340,41 @@ let booksSort = { key: 'title', direction: 'asc' }
 let currentReviewItem = null  // Track which item from queue is being reviewed
 let activeView = readerState.activeView || 'library'
 let detachSectionTracker = null
+let autoSyncTimer = null
+let autoSyncInFlight = false
+let autoSyncQueued = false
+
+function scheduleBackgroundSync(delayMs = 1800) {
+  const syncState = loadSyncState()
+  if (!syncState.accessToken && !syncState.email) return
+
+  if (autoSyncTimer) {
+    clearTimeout(autoSyncTimer)
+  }
+
+  autoSyncTimer = setTimeout(async () => {
+    autoSyncTimer = null
+
+    if (autoSyncInFlight) {
+      autoSyncQueued = true
+      return
+    }
+
+    autoSyncInFlight = true
+    try {
+      await syncNow({ interactiveFallback: false })
+      readerState = loadReaderState()
+    } catch {
+      // Keep background sync silent; manual Sync handles user-visible errors.
+    } finally {
+      autoSyncInFlight = false
+      if (autoSyncQueued) {
+        autoSyncQueued = false
+        scheduleBackgroundSync(2500)
+      }
+    }
+  }, Math.max(250, delayMs))
+}
 
 const menuItemsByView = {
   read: menuReadEl,
@@ -495,6 +530,7 @@ const reader = createReaderController({
     if (activeView === 'read') {
       setLastReadBookId(bookId)
       setBookChapter(bookId, chapterFile)
+      scheduleBackgroundSync()
     }
     updateTopHeader()
   }
@@ -943,6 +979,8 @@ async function handleSrsMessage(event) {
   if (activeView === 'read' || activeView === 'queue') {
     await updateTopHeader()
   }
+
+  scheduleBackgroundSync()
 }
 
 async function refreshBooks() {
