@@ -18,7 +18,7 @@ import { isOpfsSupported, deleteBookFiles, isBookImportedLocally } from './opfs.
 import { createReaderController } from './reader.js'
 import { createReviewItem } from './srs.js'
 import { applyFsrsRating, getDefaultFsrsSettings } from './fsrs.js'
-import { checkAuthCallback, loadSyncState, isTokenValid, connectGoogle, disconnectGoogle, syncNow } from './sync.js'
+import { checkAuthCallback, loadSyncState, saveSyncState, isTokenValid, connectGoogle, disconnectGoogle, syncNow } from './sync.js'
 
 const swStatusEl = document.getElementById('sw-status')
 const appStatusEl = document.getElementById('app-status')
@@ -344,8 +344,17 @@ let autoSyncTimer = null
 let autoSyncInFlight = false
 let autoSyncQueued = false
 
+function cancelBackgroundSync() {
+  if (autoSyncTimer) {
+    clearTimeout(autoSyncTimer)
+    autoSyncTimer = null
+  }
+  autoSyncQueued = false
+}
+
 function scheduleBackgroundSync(delayMs = 1800) {
   const syncState = loadSyncState()
+  if (syncState.autoSyncEnabled === false) return
   if (!syncState.accessToken && !syncState.email) return
 
   if (autoSyncTimer) {
@@ -1484,6 +1493,35 @@ function renderSyncView() {
     syncBodyEl.append(lastP)
   }
 
+  const autoSyncWrap = document.createElement('label')
+  autoSyncWrap.className = 'settings-help'
+  autoSyncWrap.style.display = 'flex'
+  autoSyncWrap.style.alignItems = 'center'
+  autoSyncWrap.style.gap = '0.45rem'
+  autoSyncWrap.style.marginBottom = '0.7rem'
+
+  const autoSyncInput = document.createElement('input')
+  autoSyncInput.type = 'checkbox'
+  autoSyncInput.checked = state.autoSyncEnabled !== false
+
+  const autoSyncText = document.createElement('span')
+  autoSyncText.textContent = 'Auto sync in background (after reviews and page changes)'
+
+  autoSyncInput.addEventListener('change', () => {
+    const next = loadSyncState()
+    next.autoSyncEnabled = !!autoSyncInput.checked
+    saveSyncState(next)
+
+    if (next.autoSyncEnabled) {
+      scheduleBackgroundSync(1200)
+    } else {
+      cancelBackgroundSync()
+    }
+  })
+
+  autoSyncWrap.append(autoSyncInput, autoSyncText)
+  syncBodyEl.append(autoSyncWrap)
+
   const actions = document.createElement('div')
   actions.style.cssText = 'display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.7rem;'
 
@@ -1514,6 +1552,7 @@ function renderSyncView() {
     discBtn.textContent = 'Disconnect'
     discBtn.addEventListener('click', () => {
       disconnectGoogle()
+      cancelBackgroundSync()
       renderSyncView()
     })
 

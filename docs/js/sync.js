@@ -38,7 +38,14 @@ function base64ToBytes(base64) {
 const DEFAULT_CLIENT_ID = '382276948946-64im2ov6mnq0vr07gtvih9g0a2ivsmh9.apps.googleusercontent.com'
 
 function defaultSyncState() {
-  return { clientId: DEFAULT_CLIENT_ID, accessToken: null, tokenExpiry: 0, email: null, lastSyncedAt: null }
+  return {
+    clientId: DEFAULT_CLIENT_ID,
+    accessToken: null,
+    tokenExpiry: 0,
+    email: null,
+    lastSyncedAt: null,
+    autoSyncEnabled: true
+  }
 }
 
 function getOAuthRedirectUri() {
