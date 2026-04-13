@@ -118,7 +118,9 @@ export function checkAuthCallback() {
  * Opens a Google sign-in popup and returns a promise that resolves with the
  * token data once the user completes the OAuth flow.
  */
-function startGoogleAuth(clientId) {
+function startGoogleAuth(clientId, options = {}) {
+  const prompt = String(options.prompt || '').trim()
+  const loginHint = String(options.loginHint || '').trim()
   const redirectUri = getOAuthRedirectUri()
   const params = new URLSearchParams({
     client_id: clientId,
@@ -127,6 +129,8 @@ function startGoogleAuth(clientId) {
     scope: SCOPE,
     include_granted_scopes: 'true'
   })
+  if (prompt) params.set('prompt', prompt)
+  if (loginHint) params.set('login_hint', loginHint)
 
   return new Promise((resolve, reject) => {
     const popup = window.open(
@@ -181,6 +185,39 @@ export async function connectGoogle() {
   state.email = await getTokenEmail(tokenData.accessToken)
   saveSyncState(state)
   return state
+}
+
+async function ensureValidToken(state, { interactiveFallback = false } = {}) {
+  if (isTokenValid(state)) return state
+
+  if (!state.clientId) {
+    throw new Error('Google OAuth client ID is not configured.')
+  }
+
+  try {
+    const tokenData = await startGoogleAuth(state.clientId, {
+      prompt: 'none',
+      loginHint: state.email || ''
+    })
+    state.accessToken = tokenData.accessToken
+    state.tokenExpiry = tokenData.tokenExpiry
+    state.email = (await getTokenEmail(tokenData.accessToken)) || state.email || null
+    saveSyncState(state)
+    return state
+  } catch (silentErr) {
+    if (!interactiveFallback) {
+      throw new Error('Session expired or not signed in. Please reconnect to Google.')
+    }
+
+    const tokenData = await startGoogleAuth(state.clientId, {
+      loginHint: state.email || ''
+    })
+    state.accessToken = tokenData.accessToken
+    state.tokenExpiry = tokenData.tokenExpiry
+    state.email = (await getTokenEmail(tokenData.accessToken)) || state.email || null
+    saveSyncState(state)
+    return state
+  }
 }
 
 /** Clears the stored token and email without touching the Client ID. */
@@ -530,9 +567,7 @@ async function applyPayload(payload) {
  */
 export async function syncNow() {
   const state = loadSyncState()
-  if (!isTokenValid(state)) {
-    throw new Error('Session expired or not signed in. Please reconnect to Google.')
-  }
+  await ensureValidToken(state, { interactiveFallback: true })
 
   const token = state.accessToken
   const local = await buildLocalPayload()

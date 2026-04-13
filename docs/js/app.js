@@ -1402,7 +1402,8 @@ function setSyncMsg(text, isError = false) {
 
 function renderSyncView() {
   const state = loadSyncState()
-  const connected = isTokenValid(state)
+  const tokenValid = isTokenValid(state)
+  const connected = !!(state.email || state.accessToken)
 
   syncBodyEl.innerHTML = ''
 
@@ -1424,10 +1425,14 @@ function renderSyncView() {
   const infoP = document.createElement('p')
   infoP.className = 'settings-help'
   infoP.style.marginBottom = '0.7rem'
-  if (connected && state.email) {
+  if (connected && state.email && tokenValid) {
     infoP.textContent = `Connected as ${state.email}`
+  } else if (connected && state.email) {
+    infoP.textContent = `Connected as ${state.email} (session will refresh on sync)`
   } else if (connected) {
-    infoP.textContent = 'Connected to Google Drive.'
+    infoP.textContent = tokenValid
+      ? 'Connected to Google Drive.'
+      : 'Connected to Google Drive (session will refresh on sync).'
   } else {
     infoP.textContent = 'Not connected to Google Drive.'
   }
