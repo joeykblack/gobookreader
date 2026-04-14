@@ -5,6 +5,7 @@ const SYNC_STORAGE_KEY = 'gorecall.googleSync.v1'
 const SRS_SETTINGS_KEY = 'gorecall.srsSettings.v1'
 const READER_STATE_KEY = 'gorecall.readerState.v1'
 const SYNC_FILE_NAME = 'gobooks-sync.json'
+const BOOK_FILE_PREFIX = 'gobooks-book-'
 
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 const TOKEN_INFO_URL = 'https://oauth2.googleapis.com/tokeninfo'
@@ -51,14 +52,10 @@ function defaultSyncState() {
 function getOAuthRedirectUri() {
   const host = String(window.location.hostname || '').toLowerCase()
 
-  // Local testing commonly authorizes only http://127.0.0.1:<port>/ in Google.
-  // Use origin root locally so /docs/ or /index.html paths do not cause mismatch.
   if (host === '127.0.0.1' || host === 'localhost') {
     return `${window.location.origin}/`
   }
 
-  // PWA launches can use /index.html while browser sessions may use /.
-  // Normalize both to the app root path to avoid redirect_uri_mismatch.
   const normalizedPath = String(window.location.pathname || '/').replace(/index\.html$/i, '') || '/'
   return `${window.location.origin}${normalizedPath}`
 }
@@ -240,8 +237,8 @@ export function disconnectGoogle() {
 // Drive API helpers
 // ---------------------------------------------------------------------------
 
-async function findSyncFileId(accessToken) {
-  const q = encodeURIComponent(`name='${SYNC_FILE_NAME}'`)
+async function findSyncFileIdByName(accessToken, fileName) {
+  const q = encodeURIComponent(`name='${fileName}'`)
   const resp = await fetch(
     `${DRIVE_FILES_URL}?spaces=appDataFolder&fields=files(id)&q=${q}`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -251,30 +248,8 @@ async function findSyncFileId(accessToken) {
   return data.files?.[0]?.id || null
 }
 
-/** Deletes the app sync file from Google Drive appDataFolder. */
-export async function clearRemoteSyncData() {
-  const state = loadSyncState()
-  if (!isTokenValid(state)) {
-    throw new Error('Session expired or not signed in. Please reconnect to Google.')
-  }
-
-  const token = state.accessToken
-  const fileId = await findSyncFileId(token)
-  if (!fileId) {
-    return { deleted: false }
-  }
-
-  const resp = await fetch(`${DRIVE_FILES_URL}/${fileId}`, {
-    method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` }
-  })
-  if (!resp.ok) {
-    throw new Error(`Drive delete failed (${resp.status})`)
-  }
-
-  state.lastSyncedAt = null
-  saveSyncState(state)
-  return { deleted: true }
+function getBookSyncFileName(bookId) {
+  return `${BOOK_FILE_PREFIX}${encodeURIComponent(String(bookId || ''))}.json`
 }
 
 async function downloadFile(accessToken, fileId) {
@@ -285,7 +260,7 @@ async function downloadFile(accessToken, fileId) {
   return resp.json()
 }
 
-async function uploadFile(accessToken, fileId, payload) {
+async function uploadFile(accessToken, fileId, payload, fileName = SYNC_FILE_NAME) {
   const body = JSON.stringify(payload)
 
   if (fileId) {
@@ -304,7 +279,7 @@ async function uploadFile(accessToken, fileId, payload) {
 
   // Create new file with multipart upload
   const boundary = 'gobooks_sync_boundary'
-  const metadata = JSON.stringify({ name: SYNC_FILE_NAME, parents: ['appDataFolder'] })
+  const metadata = JSON.stringify({ name: fileName, parents: ['appDataFolder'] })
   const multipart = [
     `--${boundary}`,
     'Content-Type: application/json; charset=UTF-8',
@@ -364,11 +339,22 @@ async function buildLocalPayload() {
     sections,
     // Strip device-specific auto-increment IDs from review events
     reviews: reviewEvents.map(({ id: _id, ...rest }) => rest),
-    bookFiles: {},
+    bookFilesIndex: await buildLocalBookFilesIndex(books),
     srsSettings: JSON.parse(localStorage.getItem(SRS_SETTINGS_KEY) || '{}'),
     bookPositions: getLocalBookPositions(),
     syncedAt: new Date().toISOString()
   }
+}
+
+async function buildLocalBookFilesIndex(books) {
+  const out = {}
+  for (const book of books || []) {
+    if (!book?.id) continue
+    if (await isBookImportedLocally(book.id)) {
+      out[book.id] = { importedAt: book.importedAt || '' }
+    }
+  }
+  return out
 }
 
 async function snapshotBookFiles(bookId) {
@@ -409,6 +395,11 @@ function hasLocalChanges(local, remote, bookIdsNeedingUpload) {
   }
 
   if ((bookIdsNeedingUpload || []).length) return true
+
+  const remoteBookFilesIndex = remote.bookFilesIndex || {}
+  for (const bookId of Object.keys(local.bookFilesIndex || {})) {
+    if (!remoteBookFilesIndex[bookId]) return true
+  }
 
   const remoteSettings = remote.srsSettings || {}
   const localSettings = local.srsSettings || {}
@@ -453,27 +444,10 @@ function mergePayloads(local, remote) {
   // SRS settings: local settings take priority over remote
   const srsSettings = { ...(remote.srsSettings || {}), ...(local.srsSettings || {}) }
 
-  // Book files: merge by bookId/path and prefer local bytes on collisions
-  const mergedBookFiles = {}
-  const allBookIds = new Set([
-    ...Object.keys(remote.bookFiles || {}),
-    ...Object.keys(local.bookFiles || {})
-  ])
-
-  for (const bookId of allBookIds) {
-    const byPath = new Map()
-    for (const file of remote.bookFiles?.[bookId] || []) {
-      if (!file?.path || !file?.data) continue
-      byPath.set(file.path, file)
-    }
-    for (const file of local.bookFiles?.[bookId] || []) {
-      if (!file?.path || !file?.data) continue
-      byPath.set(file.path, file)
-    }
-    const files = [...byPath.values()]
-    if (files.length) {
-      mergedBookFiles[bookId] = files
-    }
+  // Book file index (lightweight): presence map of bookId -> importedAt
+  const mergedBookFilesIndex = {
+    ...(remote.bookFilesIndex || {}),
+    ...(local.bookFilesIndex || {})
   }
 
   // Book reading positions: newest updatedAt wins
@@ -494,10 +468,48 @@ function mergePayloads(local, remote) {
     books: [...booksById.values()],
     sections: [...sectionsById.values()],
     reviews: mergedReviews,
-    bookFiles: mergedBookFiles,
+    bookFilesIndex: mergedBookFilesIndex,
     srsSettings,
     bookPositions: mergedPositions,
     syncedAt: new Date().toISOString()
+  }
+}
+
+async function syncBookFiles(
+  accessToken,
+  localBookFilesIndex = {},
+  remoteBookFilesIndex = {}
+) {
+  const localIds = new Set(Object.keys(localBookFilesIndex || {}))
+  const remoteIds = new Set(Object.keys(remoteBookFilesIndex || {}))
+
+  const localOnlyIds = [...localIds].filter(id => !remoteIds.has(id))
+  const remoteOnlyIds = [...remoteIds].filter(id => !localIds.has(id))
+  if (!localOnlyIds.length && !remoteOnlyIds.length) {
+    return { booksWithFiles: remoteIds.size }
+  }
+
+  for (const bookId of remoteOnlyIds) {
+    const fileId = await findSyncFileIdByName(accessToken, getBookSyncFileName(bookId))
+    if (!fileId) continue
+    const payload = await downloadFile(accessToken, fileId)
+    await applyPayload(payload)
+  }
+
+  for (const bookId of localOnlyIds) {
+    const files = await snapshotBookFiles(bookId)
+    if (!files.length) continue
+    const payload = {
+      bookFiles: { [bookId]: files },
+      syncedAt: new Date().toISOString()
+    }
+    const fileName = getBookSyncFileName(bookId)
+    const fileId = await findSyncFileIdByName(accessToken, fileName)
+    await uploadFile(accessToken, fileId, payload, fileName)
+  }
+
+  return {
+    booksWithFiles: new Set([...localIds, ...remoteIds]).size
   }
 }
 
@@ -579,35 +591,25 @@ export async function syncNow(options = {}) {
 
   const token = state.accessToken
   const local = await buildLocalPayload()
-  const fileId = await findSyncFileId(token)
+  const fileId = await findSyncFileIdByName(token, SYNC_FILE_NAME)
 
   let merged
   let shouldUpload = true
+  let remote = null
+  let remoteBookFilesIndex = {}
   if (fileId) {
-    const remote = await downloadFile(token, fileId)
-
-    const remoteBookFiles = remote.bookFiles || {}
-    const bookIdsNeedingUpload = []
-    for (const b of local.books || []) {
-      if (!b?.id) continue
-      const imported = await isBookImportedLocally(b.id)
-      if (!imported) continue
-      if (!Array.isArray(remoteBookFiles[b.id]) || !remoteBookFiles[b.id].length) {
-        bookIdsNeedingUpload.push(b.id)
-      }
-    }
-
-    if (bookIdsNeedingUpload.length) {
-      for (const bookId of bookIdsNeedingUpload) {
-        local.bookFiles[bookId] = await snapshotBookFiles(bookId)
-      }
-    }
-
-    shouldUpload = hasLocalChanges(local, remote, bookIdsNeedingUpload)
+    remote = await downloadFile(token, fileId)
+    remoteBookFilesIndex = remote.bookFilesIndex || {}
+    shouldUpload = hasLocalChanges(local, remote)
     merged = mergePayloads(local, remote)
 
     if (!shouldUpload) {
       await applyPayload(remote)
+      const filesResult = await syncBookFiles(
+        token,
+        local.bookFilesIndex || {},
+        remoteBookFilesIndex
+      )
       state.lastSyncedAt = remote.syncedAt || new Date().toISOString()
       saveSyncState(state)
       return {
@@ -617,20 +619,22 @@ export async function syncNow(options = {}) {
           books: remote.books?.length || 0,
           sections: remote.sections?.length || 0,
           reviews: remote.reviews?.length || 0,
-          booksWithFiles: Object.keys(remote.bookFiles || {}).length
+          booksWithFiles: filesResult.booksWithFiles
         }
       }
     }
   } else {
-    for (const b of local.books || []) {
-      if (!b?.id) continue
-      local.bookFiles[b.id] = await snapshotBookFiles(b.id)
-    }
     merged = local
   }
 
-  await uploadFile(token, fileId, merged)
+  await uploadFile(token, fileId, merged, SYNC_FILE_NAME)
   await applyPayload(merged)
+
+  const filesResult = await syncBookFiles(
+    token,
+    local.bookFilesIndex || {},
+    remoteBookFilesIndex
+  )
 
   state.lastSyncedAt = merged.syncedAt
   saveSyncState(state)
@@ -642,7 +646,7 @@ export async function syncNow(options = {}) {
       books: merged.books?.length || 0,
       sections: merged.sections?.length || 0,
       reviews: merged.reviews?.length || 0,
-      booksWithFiles: Object.keys(merged.bookFiles || {}).length
+      booksWithFiles: filesResult.booksWithFiles
     }
   }
 }
