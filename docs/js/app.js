@@ -22,6 +22,7 @@ import { checkAuthCallback, loadSyncState, saveSyncState, isTokenValid, connectG
 
 const swStatusEl = document.getElementById('sw-status')
 const appStatusEl = document.getElementById('app-status')
+const syncBannerEl = document.getElementById('sync-banner')
 const importInputEl = document.getElementById('epub-file')
 const importButtonEl = document.getElementById('import-button')
 const booksListEl = document.getElementById('books-list')
@@ -350,6 +351,40 @@ function cancelBackgroundSync() {
     autoSyncTimer = null
   }
   autoSyncQueued = false
+}
+
+function showSyncBanner(msg = 'Syncing\u2026') {
+  if (!syncBannerEl) return
+  syncBannerEl.textContent = msg
+  syncBannerEl.hidden = false
+}
+
+function hideSyncBanner() {
+  if (!syncBannerEl) return
+  syncBannerEl.hidden = true
+  syncBannerEl.textContent = ''
+}
+
+/**
+ * Foreground startup sync: shows a banner, runs a full sync, and updates
+ * readerState from the synced localStorage. The caller is responsible for
+ * restoring the reading position AFTER this resolves so the book opens at
+ * the synced chapter rather than the stale local one.
+ */
+async function startupSync() {
+  const syncState = loadSyncState()
+  if (syncState.autoSyncEnabled === false) return
+  if (!syncState.email) return
+
+  showSyncBanner('Syncing\u2026')
+  try {
+    await syncNow({ interactiveFallback: false })
+    readerState = loadReaderState()
+    await refreshBooks()
+  } catch (err) {
+    console.warn('[startupSync] sync failed:', err)
+  }
+  hideSyncBanner()
 }
 
 function scheduleBackgroundSync(delayMs = 1800) {
@@ -1836,7 +1871,15 @@ async function init() {
   switchView(activeView)
 
   if (activeView === 'read') {
+    // Sync first so restoreLastReadingPosition() uses the up-to-date chapter.
+    // Awaiting here prevents onLocationChange from stamping a stale updatedAt
+    // before the remote position has been merged into localStorage.
+    await startupSync()
     await restoreLastReadingPosition()
+  } else {
+    // For non-read views sync in the background; readerState will be current
+    // by the time the user navigates to the reader.
+    setTimeout(() => startupSync(), 0)
   }
 }
 
