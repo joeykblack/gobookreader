@@ -37,6 +37,13 @@ db.version(4).stores({
   }
 })
 
+db.version(5).stores({
+  books: 'id,title,importedAt',
+  section: 'itemId,bookId,chapterFile,sectionName,dueDate,lastReviewedAt,createdAt,lastRating,scheduler',
+  review: '++id,itemId,bookId,chapterFile,sectionName,reviewedAt,rating,scheduler,dueDateBefore,dueDateAfter',
+  highlight: '++id,bookId,chapterFile'
+})
+
 export async function upsertBook(book) {
   await db.books.put(book)
 }
@@ -104,4 +111,30 @@ export async function getAllReviewEvents() {
 
 export async function getReviewEventsForItem(itemId) {
   return db.review.where('itemId').equals(itemId).toArray()
+}
+
+// ── Highlights ────────────────────────────────────────────────────────────────
+
+export async function addHighlight(highlight) {
+  return db.highlight.add({ ...highlight, createdAt: new Date().toISOString() })
+}
+
+export async function getHighlightsForChapter(bookId, chapterFile) {
+  return db.highlight
+    .where('bookId')
+    .equals(bookId)
+    .filter(h => h.chapterFile === chapterFile)
+    .toArray()
+}
+
+export async function deleteHighlight(id) {
+  await db.highlight.delete(id)
+}
+
+export async function deleteHighlightsForBook(bookId) {
+  await db.highlight.where('bookId').equals(bookId).delete()
+}
+
+export async function getAllHighlights() {
+  return db.highlight.toArray()
 }

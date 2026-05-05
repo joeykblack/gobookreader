@@ -90,6 +90,7 @@ export function createReaderController({
   getTheme,
   statusCallback,
   reviewStateProvider,
+  highlightProvider,
   onLocationChange
 }) {
   const MIN_PDF_ZOOM = 0.6
@@ -571,7 +572,10 @@ export function createReaderController({
     const reviewStates = reviewStateProvider
       ? await reviewStateProvider(book.id, chapterPath)
       : new Map()
-    enhanceChapter(doc, reviewStates)
+    const highlights = highlightProvider
+      ? await highlightProvider(book.id, chapterPath)
+      : []
+    enhanceChapter(doc, reviewStates, highlights)
     injectThemeStyle(doc, currentTheme())
 
     if (isXhtml) {
@@ -806,6 +810,11 @@ export function createReaderController({
     },
     async setTheme(theme) {
       activeTheme = normalizeTheme(theme)
+      if (currentBook) {
+        await renderCurrentChapter()
+      }
+    },
+    async reloadCurrentChapter() {
       if (currentBook) {
         await renderCurrentChapter()
       }

@@ -1,4 +1,4 @@
-import { db, getAllBooks, getAllReviews, getAllReviewEvents } from './db.js'
+import { db, getAllBooks, getAllReviews, getAllReviewEvents, getAllHighlights } from './db.js'
 import { isBookImportedLocally, listBookFiles, readBookFileBytes, writeBookFile } from './opfs.js'
 
 const SYNC_STORAGE_KEY = 'gorecall.googleSync.v1'
@@ -328,10 +328,11 @@ function getLocalBookPositions() {
 }
 
 async function buildLocalPayload() {
-  const [books, sections, reviewEvents] = await Promise.all([
+  const [books, sections, reviewEvents, highlights] = await Promise.all([
     getAllBooks(),
     getAllReviews(),
-    getAllReviewEvents()
+    getAllReviewEvents(),
+    getAllHighlights()
   ])
 
   return {
@@ -339,6 +340,8 @@ async function buildLocalPayload() {
     sections,
     // Strip device-specific auto-increment IDs from review events
     reviews: reviewEvents.map(({ id: _id, ...rest }) => rest),
+    // Strip auto-increment IDs from highlights; deduplicate by bookId+chapterFile+createdAt
+    highlights: highlights.map(({ id: _id, ...rest }) => rest),
     bookFilesIndex: await buildLocalBookFilesIndex(books),
     srsSettings: JSON.parse(localStorage.getItem(SRS_SETTINGS_KEY) || '{}'),
     bookPositions: getLocalBookPositions(),
@@ -394,6 +397,20 @@ function hasLocalChanges(local, remote, bookIdsNeedingUpload) {
     if (!remoteReviewKeys.has(`${r.itemId}|${r.reviewedAt}`)) return true
   }
 
+  const remoteHighlightKeys = new Set(
+    (remote.highlights || []).map(h => `${h.bookId}|${h.chapterFile}|${h.createdAt}`)
+  )
+  for (const h of local.highlights || []) {
+    if (!remoteHighlightKeys.has(`${h.bookId}|${h.chapterFile}|${h.createdAt}`)) return true
+  }
+  // Also detect remote highlights that are missing locally (deleted elsewhere)
+  const localHighlightKeys = new Set(
+    (local.highlights || []).map(h => `${h.bookId}|${h.chapterFile}|${h.createdAt}`)
+  )
+  for (const h of remote.highlights || []) {
+    if (!localHighlightKeys.has(`${h.bookId}|${h.chapterFile}|${h.createdAt}`)) return true
+  }
+
   if ((bookIdsNeedingUpload || []).length) return true
 
   const remoteBookFilesIndex = remote.bookFilesIndex || {}
@@ -441,6 +458,14 @@ function mergePayloads(local, remote) {
     if (!seen.has(key)) { seen.add(key); mergedReviews.push(r) }
   }
 
+  // Highlights: union by bookId+chapterFile+createdAt fingerprint
+  const seenHighlights = new Set()
+  const mergedHighlights = []
+  for (const h of [...(remote.highlights || []), ...(local.highlights || [])]) {
+    const key = `${h.bookId}|${h.chapterFile}|${h.createdAt}`
+    if (!seenHighlights.has(key)) { seenHighlights.add(key); mergedHighlights.push(h) }
+  }
+
   // SRS settings: local settings take priority over remote
   const srsSettings = { ...(remote.srsSettings || {}), ...(local.srsSettings || {}) }
 
@@ -468,6 +493,7 @@ function mergePayloads(local, remote) {
     books: [...booksById.values()],
     sections: [...sectionsById.values()],
     reviews: mergedReviews,
+    highlights: mergedHighlights,
     bookFilesIndex: mergedBookFilesIndex,
     srsSettings,
     bookPositions: mergedPositions,
@@ -527,6 +553,26 @@ async function applyPayload(payload) {
     const existingKeys = new Set(existing.map(r => `${r.itemId}|${r.reviewedAt}`))
     const newEvents = payload.reviews.filter(r => !existingKeys.has(`${r.itemId}|${r.reviewedAt}`))
     if (newEvents.length) await db.review.bulkAdd(newEvents)
+  }
+
+  if (Array.isArray(payload.highlights)) {
+    // Replace all local highlights with the merged set (ids are device-local auto-increments)
+    const existing = await getAllHighlights()
+    const existingKeys = new Set(
+      existing.map(h => `${h.bookId}|${h.chapterFile}|${h.createdAt}`)
+    )
+    const incoming = payload.highlights.filter(
+      h => !existingKeys.has(`${h.bookId}|${h.chapterFile}|${h.createdAt}`)
+    )
+    if (incoming.length) await db.highlight.bulkAdd(incoming)
+    // Remove local highlights that were deleted on the remote side
+    const remoteKeys = new Set(
+      payload.highlights.map(h => `${h.bookId}|${h.chapterFile}|${h.createdAt}`)
+    )
+    const toDelete = existing.filter(
+      h => !remoteKeys.has(`${h.bookId}|${h.chapterFile}|${h.createdAt}`)
+    )
+    if (toDelete.length) await db.highlight.bulkDelete(toDelete.map(h => h.id))
   }
 
   if (payload.srsSettings && Object.keys(payload.srsSettings).length) {

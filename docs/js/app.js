@@ -10,7 +10,11 @@ import {
   deleteReview,
   deleteAllReviews,
   deleteReviewsForBook,
-  getAllReviewEvents
+  getAllReviewEvents,
+  addHighlight,
+  deleteHighlight,
+  getHighlightsForChapter,
+  deleteHighlightsForBook
 } from './db.js'
 import { importEpubFile } from './epub.js'
 import { importPdfFile } from './pdf.js'
@@ -556,6 +560,10 @@ async function getChapterReviewStates(bookId, chapterFile) {
   return states
 }
 
+async function getChapterHighlights(bookId, chapterFile) {
+  return getHighlightsForChapter(bookId, chapterFile)
+}
+
 const reader = createReaderController({
   rootEl: readerRootEl,
   titleEl: readerTitleEl,
@@ -568,6 +576,7 @@ const reader = createReaderController({
   getTheme: () => readerState.readerTheme,
   statusCallback: setStatus,
   reviewStateProvider: getChapterReviewStates,
+  highlightProvider: getChapterHighlights,
   onLocationChange: ({ bookId, chapterFile }) => {
     selectedBookId = bookId
     setSelectedBookId(bookId)
@@ -1025,6 +1034,32 @@ async function handleSrsMessage(event) {
   }
 
   scheduleBackgroundSync()
+}
+
+async function handleHighlightMessage(event) {
+  const { type } = event.data || {}
+
+  if (type === 'add-highlight') {
+    const { text, prefix, suffix } = event.data
+    if (!text || !text.trim()) return
+    const location = reader.getCurrentLocation()
+    if (!location) return
+    await addHighlight({
+      bookId: location.bookId,
+      chapterFile: location.chapterFile,
+      text,
+      prefix: prefix || '',
+      suffix: suffix || ''
+    })
+    await reader.reloadCurrentChapter()
+    scheduleBackgroundSync()
+  } else if (type === 'remove-highlight') {
+    const { id } = event.data
+    if (!id && id !== 0) return
+    await deleteHighlight(id)
+    await reader.reloadCurrentChapter()
+    scheduleBackgroundSync()
+  }
 }
 
 async function refreshBooks() {
@@ -1540,7 +1575,11 @@ function renderSyncView() {
   autoSyncInput.checked = state.autoSyncEnabled !== false
 
   const autoSyncText = document.createElement('span')
-  autoSyncText.textContent = 'Auto sync in background (after reviews and page changes)'
+  autoSyncText.textContent = 'Auto sync in background (after reviews and page changes) '
+  const betaBadge = document.createElement('span')
+  betaBadge.textContent = 'Beta'
+  betaBadge.style.cssText = 'font-size:0.7em;font-weight:600;background:#1a6fb5;color:#fff;border-radius:3px;padding:1px 5px;vertical-align:middle;letter-spacing:0.03em'
+  autoSyncText.append(betaBadge)
 
   autoSyncInput.addEventListener('change', () => {
     const next = loadSyncState()
@@ -1863,6 +1902,7 @@ async function init() {
     setStatus('All review items cleared.', 'ok')
   })
   window.addEventListener('message', handleSrsMessage)
+  window.addEventListener('message', handleHighlightMessage)
   attachSectionTracking()
   await loadAppVersion()
   await refreshBooks()

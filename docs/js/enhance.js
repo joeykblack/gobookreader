@@ -6,9 +6,12 @@
  * because the iframe sandbox allows scripts but not module imports.
  *
  * Pipeline (order matters):
- *  1. injectSrsButtons  — appends SRS rating bar at the end of every section.
- *  2. injectAnswerHiding — wraps answer sections in a hidden div; the SRS bar
+ *  1. injectSrsButtons      — appends SRS rating bar at the end of every section.
+ *  2. injectAnswerHiding    — wraps answer sections in a hidden div; the SRS bar
  *     injected in step 1 is carried into the wrapper and revealed with the answer.
+ *  3. injectHighlights      — re-applies saved highlights as <mark> elements.
+ *  4. injectHighlightInteraction — injects a floating toolbar so the user can
+ *     highlight selected text; posts messages to the parent frame.
  */
 
 const ANSWER_HEADING_RE = /^Answer\b/i
@@ -253,11 +256,180 @@ function injectAnswerHiding(doc) {
   return count
 }
 
+// ── Highlight feature ─────────────────────────────────────────────────────────
+
+const HIGHLIGHT_MARK_STYLE = [
+  'background: #fef08a',
+  'color: inherit',
+  'border-radius: 2px',
+  'cursor: pointer',
+  'padding: 0 1px',
+  'transition: background 0.15s'
+].join(';')
+
+// Inline onclick: posts {type:"remove-highlight", id} to parent.
+const HIGHLIGHT_REMOVE_ONCLICK =
+  '(function(el){window.parent.postMessage({type:"remove-highlight",id:+el.dataset.highlightId},"*")})(this)'
+
+/**
+ * Injected as an inline <script> into the chapter body.
+ * Shows a floating "✓ Highlight" button when the user selects text, and posts
+ * {type:"add-highlight", text, prefix, suffix} to the parent frame on click.
+ */
+const HIGHLIGHT_TOOLBAR_SCRIPT = [
+  '(function(){',
+  'var tb=document.createElement("div");',
+  'tb.id="gb-hl-tb";',
+  'tb.style.cssText="position:fixed;display:none;z-index:9999;background:#1e293b;border-radius:6px;',
+  'padding:3px 8px;box-shadow:0 2px 10px rgba(0,0,0,.4);pointer-events:auto;";',
+  'var btn=document.createElement("button");',
+  'btn.textContent="\u2713 Highlight";',
+  'btn.style.cssText="background:none;border:none;color:#fef08a;cursor:pointer;font-size:13px;font-weight:600;padding:2px 4px;white-space:nowrap;";',
+  'btn.onmousedown=function(e){e.preventDefault();};',
+  'btn.onclick=function(){',
+  '  var sel=window.getSelection();',
+  '  if(!sel||!sel.rangeCount||!sel.toString().trim()){tb.style.display="none";return;}',
+  '  var text=sel.toString();',
+  '  var range=sel.getRangeAt(0);',
+  '  var pre="",suf="";',
+  '  try{',
+  '    var pr=document.createRange();',
+  '    pr.setStart(document.body,0);',
+  '    pr.setEnd(range.startContainer,range.startOffset);',
+  '    pre=pr.toString().slice(-50);',
+  '    var sr=document.createRange();',
+  '    sr.setStart(range.endContainer,range.endOffset);',
+  '    var last=document.body.lastChild;',
+  '    if(last)sr.setEndAfter(last);',
+  '    suf=sr.toString().slice(0,50);',
+  '  }catch(e){}',
+  '  tb.style.display="none";',
+  '  sel.removeAllRanges();',
+  '  window.parent.postMessage({type:"add-highlight",text:text,prefix:pre,suffix:suf},"*");',
+  '};',
+  'tb.appendChild(btn);',
+  'document.body.appendChild(tb);',
+  'function showAt(rect){',
+  '  tb.style.display="block";',
+  '  tb.style.top=Math.max(4,rect.top-40)+"px";',
+  '  tb.style.left=Math.max(4,rect.left+rect.width/2-55)+"px";',
+  '}',
+  'document.addEventListener("mouseup",function(e){',
+  '  if(tb.contains(e.target))return;',
+  '  setTimeout(function(){',
+  '    var sel=window.getSelection();',
+  '    if(!sel||!sel.toString().trim()){tb.style.display="none";return;}',
+  '    try{showAt(sel.getRangeAt(0).getBoundingClientRect());}catch(e){}',
+  '  },10);',
+  '});',
+  'document.addEventListener("mousedown",function(e){',
+  '  if(!tb.contains(e.target))tb.style.display="none";',
+  '});',
+  'document.addEventListener("keydown",function(e){',
+  '  if(e.key==="Escape")tb.style.display="none";',
+  '});',
+  '})();'
+].join('')
+
+/**
+ * Walk all visible text nodes in body, concatenate their text, find the
+ * highlight's text (disambiguated by prefix), and wrap it in a <mark>.
+ * Returns true on success, false if not found or surroundContents throws
+ * (e.g., the selection spans element boundaries).
+ */
+function findAndHighlightText(doc, text, prefix, suffix, highlightId) {
+  if (!text || !text.trim()) return false
+  const body = doc.body || doc.querySelector('body')
+  if (!body) return false
+
+  // Collect non-script/style/mark text nodes.
+  const walker = doc.createTreeWalker(body, 0x4 /* SHOW_TEXT */)
+  const textNodes = []
+  let node
+  while ((node = walker.nextNode())) {
+    const parent = node.parentElement
+    if (parent && /^(script|style|mark)$/i.test(parent.tagName)) continue
+    textNodes.push(node)
+  }
+
+  const fullText = textNodes.map(n => n.textContent || '').join('')
+
+  // Try to use the prefix to pick the right occurrence.
+  let startInFull = -1
+  if (prefix) {
+    const idx = fullText.indexOf(prefix + text)
+    if (idx >= 0) startInFull = idx + prefix.length
+  }
+  if (startInFull < 0) startInFull = fullText.indexOf(text)
+  if (startInFull < 0) return false
+
+  const endInFull = startInFull + text.length
+
+  // Map character positions back to DOM text nodes.
+  let charCount = 0
+  let startNode = null, startOffset = 0
+  let endNode = null, endOffset = 0
+
+  for (const tn of textNodes) {
+    const len = (tn.textContent || '').length
+    const nodeEnd = charCount + len
+
+    if (startNode === null && startInFull < nodeEnd && startInFull >= charCount) {
+      startNode = tn
+      startOffset = startInFull - charCount
+    }
+    if (endNode === null && endInFull <= nodeEnd) {
+      endNode = tn
+      endOffset = endInFull - charCount
+      break
+    }
+    charCount += len
+  }
+
+  if (!startNode || !endNode) return false
+
+  try {
+    const range = doc.createRange()
+    range.setStart(startNode, startOffset)
+    range.setEnd(endNode, endOffset)
+
+    const mark = doc.createElement('mark')
+    mark.className = 'gb-highlight'
+    mark.setAttribute('style', HIGHLIGHT_MARK_STYLE)
+    mark.setAttribute('title', 'Click to remove highlight')
+    mark.setAttribute('data-highlight-id', String(highlightId))
+    mark.setAttribute('onclick', HIGHLIGHT_REMOVE_ONCLICK)
+    range.surroundContents(mark)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** Re-apply all persisted highlights into the document DOM. */
+function injectHighlights(doc, highlights) {
+  if (!highlights || !highlights.length) return
+  for (const h of highlights) {
+    findAndHighlightText(doc, h.text, h.prefix || '', h.suffix || '', h.id)
+  }
+}
+
+/** Inject the floating "✓ Highlight" selection toolbar script into the body. */
+function injectHighlightInteraction(doc) {
+  const body = doc.body || doc.querySelector('body')
+  if (!body) return
+  const script = doc.createElement('script')
+  script.textContent = HIGHLIGHT_TOOLBAR_SCRIPT
+  body.appendChild(script)
+}
+
 /**
  * Main entry point called by reader.js before serialising the chapter to a
  * Blob URL.  Runs SRS injection first, then answer hiding.
  */
-export function enhanceChapter(doc, reviewStates = new Map()) {
+export function enhanceChapter(doc, reviewStates = new Map(), highlights = []) {
   injectSrsButtons(doc, reviewStates)
   injectAnswerHiding(doc)
+  injectHighlights(doc, highlights)
+  injectHighlightInteraction(doc)
 }
