@@ -7,14 +7,21 @@
  *
  * Pipeline (order matters):
  *  1. injectSrsButtons      — appends SRS rating bar at the end of every section.
- *  2. injectAnswerHiding    — wraps answer sections in a hidden div; the SRS bar
- *     injected in step 1 is carried into the wrapper and revealed with the answer.
+ *  2. injectHiddenSections   — wraps Answer/Hints/Solution sections in a hidden div;
+ *     the SRS bar injected in step 1 is carried into the wrapper and revealed with
+ *     the hidden section.
  *  3. injectHighlights      — re-applies saved highlights as <mark> elements.
  *  4. injectHighlightInteraction — injects a floating toolbar so the user can
  *     highlight selected text; posts messages to the parent frame.
  */
 
-const ANSWER_HEADING_RE = /^Answer\b/i
+const HIDDEN_SECTION_RULES = [
+  { key: 'answer', headingRe: /\bAnswer\b/i, buttonText: 'Show Answer' },
+  { key: 'hints', headingRe: /\bHints?\b/i, buttonText: 'Show Hints' },
+  { key: 'solution', headingRe: /\bSolutions?\b/i, buttonText: 'Show Solution' },
+  { key: 'variation', headingRe: /\bVariations?\b/i, buttonText: 'Show Variation' },
+  { key: 'lessons-learned', headingRe: /\bLessons?\s+learned\b/i, buttonText: 'Show Lessons Learned' }
+]
 const HEADING_SELECTOR = 'h1, h2, h3, h4, h5, h6'
 
 function isHeadingNode(node) {
@@ -158,8 +165,8 @@ function collectSections(body) {
 
 /**
  * Inject an SRS button bar after the last node of every section.
- * Must run BEFORE injectAnswerHiding so that the bar for an answer section
- * is carried into the hidden wrapper and revealed alongside the answer.
+ * Must run BEFORE injectHiddenSections so that the bar for a hidden section
+ * is carried into the hidden wrapper and revealed alongside it.
  */
 function injectSrsButtons(doc, reviewStates = new Map()) {
   const body = doc.body || doc.querySelector('body')
@@ -184,26 +191,28 @@ function injectSrsButtons(doc, reviewStates = new Map()) {
 }
 
 /**
- * For each heading with class `break` whose text starts with `Answer`, hides
- * the nodes from that heading up to (but not including) the next heading
- * sibling, then
- * inserts a "Show Answer" button before the hidden section.
+ * For each heading with class `break` whose text starts with Answer, Hints,
+ * or Solution, hides the nodes from that heading up to (but not including)
+ * the next heading sibling, then inserts the matching reveal button before
+ * the hidden section.
  *
- * Because injectSrsButtons has already run, the SRS bar for the answer section
+ * Because injectSrsButtons has already run, the SRS bar for the hidden section
  * is included among the collected nodes and will be hidden/revealed with them.
  *
- * Returns the number of answer sections found and hidden.
+ * Returns the number of hidden sections found and hidden.
  */
-function injectAnswerHiding(doc) {
-  const answerHeadings = Array.from(doc.querySelectorAll(`${HEADING_SELECTOR}.break`)).filter(el =>
-    ANSWER_HEADING_RE.test((el.textContent || '').trim())
-  )
+function injectHiddenSections(doc) {
+  const hiddenHeadings = Array.from(doc.querySelectorAll(`${HEADING_SELECTOR}.break`)).map(heading => {
+    const text = (heading.textContent || '').trim()
+    const rule = HIDDEN_SECTION_RULES.find(r => r.headingRe.test(text))
+    return rule ? { heading, rule } : null
+  }).filter(Boolean)
 
-  if (!answerHeadings.length) return 0
+  if (!hiddenHeadings.length) return 0
 
   let count = 0
 
-  answerHeadings.forEach((heading, i) => {
+  hiddenHeadings.forEach(({ heading, rule }, i) => {
     const body = heading.parentNode
     if (!body) return
 
@@ -224,8 +233,8 @@ function injectAnswerHiding(doc) {
     if (!answerNodes.length) return
 
     // Stable unique id per answer section.
-    const wrapperId = `gb-answer-wrapper-${i}`
-    const btnId = `gb-show-answer-btn-${i}`
+    const wrapperId = `gb-hidden-section-wrapper-${rule.key}-${i}`
+    const btnId = `gb-show-hidden-section-btn-${rule.key}-${i}`
 
     // Wrap answer nodes in a hidden container.
     const wrapper = doc.createElement('div')
@@ -241,7 +250,7 @@ function injectAnswerHiding(doc) {
     // Build the reveal button.
     const btn = doc.createElement('button')
     btn.id = btnId
-    btn.textContent = 'Show Answer'
+    btn.textContent = rule.buttonText
     btn.setAttribute(
       'onclick',
       `document.getElementById("${wrapperId}").style.display="";` +
@@ -425,11 +434,11 @@ function injectHighlightInteraction(doc) {
 
 /**
  * Main entry point called by reader.js before serialising the chapter to a
- * Blob URL.  Runs SRS injection first, then answer hiding.
+ * Blob URL. Runs SRS injection first, then hidden-section wrapping.
  */
 export function enhanceChapter(doc, reviewStates = new Map(), highlights = []) {
   injectSrsButtons(doc, reviewStates)
-  injectAnswerHiding(doc)
+  injectHiddenSections(doc)
   injectHighlights(doc, highlights)
   injectHighlightInteraction(doc)
 }
