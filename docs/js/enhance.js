@@ -42,7 +42,6 @@ function hasMeaningfulSectionContent(node) {
 }
 
 const SRS_CONTAINER_STYLE = [
-  'border-top: 1px solid #d1d5db',
   'padding-top: 0.55rem',
   'margin-top: 0.9rem',
   'display: flex',
@@ -192,6 +191,24 @@ function injectCollapsibleSections(doc) {
   const headings = Array.from(doc.querySelectorAll(`${HEADING_SELECTOR}.break`))
   if (!headings.length) return 0
 
+  // Inject a stylesheet for consistent section spacing that won't be overridden
+  // by the book's own CSS (injected styles have document-level specificity but
+  // we use a data attribute to scope and !important for guaranteed effect).
+  const style = doc.createElement('style')
+  style.textContent = [
+    `[data-gb-collapsible-heading] {`,
+    `  margin-top: 1em !important;`,
+    `  padding-top: 0.5em !important;`,
+    `  border-top: 1px solid rgba(0,0,0,0.12) !important;`,
+    `}`,
+    `[data-gb-section-body] {`,
+    `  margin-bottom: 0.5em !important;`,
+    `}`
+  ].join('\n')
+  const head = doc.querySelector('head')
+  if (head) head.appendChild(style)
+  else doc.documentElement?.appendChild(style)
+
   let count = 0
 
   headings.forEach((heading, i) => {
@@ -210,7 +227,9 @@ function injectCollapsibleSections(doc) {
       bodyNodes.push(node)
     }
 
-    if (!bodyNodes.length) return
+    // Skip sections with no meaningful content (mirrors collectSections behaviour).
+    const hasMeaningful = bodyNodes.some(hasMeaningfulSectionContent)
+    if (!hasMeaningful) return
 
     const headingText = (heading.textContent || '').trim()
     const startCollapsed = AUTO_COLLAPSE_RULES.some(re => re.test(headingText))
@@ -220,6 +239,7 @@ function injectCollapsibleSections(doc) {
     // Wrap body nodes.
     const wrapper = doc.createElement('div')
     wrapper.id = wrapperId
+    wrapper.setAttribute('data-gb-section-body', '')
     wrapper.setAttribute('style', startCollapsed ? 'display:none' : '')
     parent.insertBefore(wrapper, bodyNodes[0])
     for (const node of bodyNodes) wrapper.appendChild(node)
@@ -232,6 +252,9 @@ function injectCollapsibleSections(doc) {
     heading.appendChild(indicator)
 
     // Make heading a toggle.
+    // Only apply the spacing/border attribute after the first collapsible section
+    // so the very first heading doesn't get a line above it.
+    if (count > 0) heading.setAttribute('data-gb-collapsible-heading', '')
     heading.setAttribute('style',
       (heading.getAttribute('style') || '') +
       ';cursor:pointer;user-select:none;'
