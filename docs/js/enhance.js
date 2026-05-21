@@ -6,21 +6,22 @@
  * because the iframe sandbox allows scripts but not module imports.
  *
  * Pipeline (order matters):
- *  1. injectSrsButtons      — appends SRS rating bar at the end of every section.
- *  2. injectHiddenSections   — wraps Answer/Hints/Solution sections in a hidden div;
- *     the SRS bar injected in step 1 is carried into the wrapper and revealed with
- *     the hidden section.
- *  3. injectHighlights      — re-applies saved highlights as <mark> elements.
+ *  1. injectSrsButtons          — appends SRS rating bar at the end of every section.
+ *  2. injectCollapsibleSections — wraps each .break section body in a toggleable div;
+ *     sections matching AUTO_COLLAPSE_RULES start collapsed, others start expanded.
+ *     The heading always remains visible and acts as the toggle.
+ *  3. injectHighlights          — re-applies saved highlights as <mark> elements.
  *  4. injectHighlightInteraction — injects a floating toolbar so the user can
  *     highlight selected text; posts messages to the parent frame.
  */
 
-const HIDDEN_SECTION_RULES = [
-  { key: 'answer', headingRe: /\bAnswer\b/i, buttonText: 'Show Answer' },
-  { key: 'hints', headingRe: /\bHints?\b/i, buttonText: 'Show Hints' },
-  { key: 'solution', headingRe: /\bSolutions?\b/i, buttonText: 'Show Solution' },
-  { key: 'variation', headingRe: /\bVariations?\b/i, buttonText: 'Show Variation' },
-  { key: 'lessons-learned', headingRe: /\bLessons?\s+learned\b/i, buttonText: 'Show Lessons Learned' }
+// Sections whose heading text matches any of these will start collapsed.
+const AUTO_COLLAPSE_RULES = [
+  /\bAnswer\b/i,
+  /\bHints?\b/i,
+  /\bSolutions?\b/i,
+  /\bVariations?\b/i,
+  /\bLessons?\s+learned\b/i
 ]
 const HEADING_SELECTOR = 'h1, h2, h3, h4, h5, h6'
 
@@ -39,18 +40,6 @@ function hasMeaningfulSectionContent(node) {
   if (node.nodeType !== 1) return false
   return !isHeadingNode(node)
 }
-
-const REVEAL_BTN_STYLE = [
-  'margin: 1.5em auto',
-  'display: block',
-  'padding: 0.55em 1.8em',
-  'font-size: 1em',
-  'cursor: pointer',
-  'background: #1d4ed8',
-  'color: #fff',
-  'border: 0',
-  'border-radius: 8px'
-].join(';')
 
 const SRS_CONTAINER_STYLE = [
   'border-top: 1px solid #d1d5db',
@@ -165,8 +154,8 @@ function collectSections(body) {
 
 /**
  * Inject an SRS button bar after the last node of every section.
- * Must run BEFORE injectHiddenSections so that the bar for a hidden section
- * is carried into the hidden wrapper and revealed alongside it.
+ * Must run BEFORE injectCollapsibleSections so that the SRS bar for each
+ * section is carried into the collapsible wrapper alongside the content.
  */
 function injectSrsButtons(doc, reviewStates = new Map()) {
   const body = doc.body || doc.querySelector('body')
@@ -191,74 +180,77 @@ function injectSrsButtons(doc, reviewStates = new Map()) {
 }
 
 /**
- * For each heading with class `break` whose text starts with Answer, Hints,
- * or Solution, hides the nodes from that heading up to (but not including)
- * the next heading sibling, then inserts the matching reveal button before
- * the hidden section.
+ * Make every .break section collapsible. The heading stays visible and acts
+ * as a toggle; its body content is wrapped in a div that hides/shows on click.
+ * Sections whose heading matches AUTO_COLLAPSE_RULES start collapsed;
+ * all others start expanded.
  *
- * Because injectSrsButtons has already run, the SRS bar for the hidden section
- * is included among the collected nodes and will be hidden/revealed with them.
- *
- * Returns the number of hidden sections found and hidden.
+ * Because injectSrsButtons has already run, the SRS bar is included inside
+ * each wrapper and collapses/expands with the rest of the section.
  */
-function injectHiddenSections(doc) {
-  const hiddenHeadings = Array.from(doc.querySelectorAll(`${HEADING_SELECTOR}.break`)).map(heading => {
-    const text = (heading.textContent || '').trim()
-    const rule = HIDDEN_SECTION_RULES.find(r => r.headingRe.test(text))
-    return rule ? { heading, rule } : null
-  }).filter(Boolean)
-
-  if (!hiddenHeadings.length) return 0
+function injectCollapsibleSections(doc) {
+  const headings = Array.from(doc.querySelectorAll(`${HEADING_SELECTOR}.break`))
+  if (!headings.length) return 0
 
   let count = 0
 
-  hiddenHeadings.forEach(({ heading, rule }, i) => {
-    const body = heading.parentNode
-    if (!body) return
+  headings.forEach((heading, i) => {
+    const parent = heading.parentNode
+    if (!parent) return
 
-    // Collect nodes from this answer heading up to (not including)
-    // the next heading sibling, or end of body.
-    const siblings = Array.from(body.childNodes)
+    // Collect sibling nodes that follow this heading up to the next .break heading.
+    const siblings = Array.from(parent.childNodes)
     const startIdx = siblings.indexOf(heading)
     if (startIdx < 0) return
 
-    const answerNodes = []
-    for (let j = startIdx; j < siblings.length; j++) {
+    const bodyNodes = []
+    for (let j = startIdx + 1; j < siblings.length; j++) {
       const node = siblings[j]
-      // Stop before the next heading that comes AFTER our own heading.
-      if (j > startIdx && isHeadingNode(node)) break
-      answerNodes.push(node)
+      if (isHeadingNode(node) && (node.classList?.contains('break') || isHeadingNode(node))) break
+      bodyNodes.push(node)
     }
 
-    if (!answerNodes.length) return
+    if (!bodyNodes.length) return
 
-    // Stable unique id per answer section.
-    const wrapperId = `gb-hidden-section-wrapper-${rule.key}-${i}`
-    const btnId = `gb-show-hidden-section-btn-${rule.key}-${i}`
+    const headingText = (heading.textContent || '').trim()
+    const startCollapsed = AUTO_COLLAPSE_RULES.some(re => re.test(headingText))
 
-    // Wrap answer nodes in a hidden container.
+    const wrapperId = `gb-section-body-${i}`
+
+    // Wrap body nodes.
     const wrapper = doc.createElement('div')
     wrapper.id = wrapperId
-    wrapper.setAttribute('style', 'display:none')
+    wrapper.setAttribute('style', startCollapsed ? 'display:none' : '')
+    parent.insertBefore(wrapper, bodyNodes[0])
+    for (const node of bodyNodes) wrapper.appendChild(node)
 
-    // Insert wrapper before the first answer node, then move nodes into it.
-    body.insertBefore(wrapper, answerNodes[0])
-    for (const node of answerNodes) {
-      wrapper.appendChild(node)
-    }
+    // Add collapse indicator to heading.
+    const indicator = doc.createElement('span')
+    indicator.setAttribute('data-gb-collapse-indicator', '')
+    indicator.textContent = startCollapsed ? ' \u25B6' : ' \u25BC'
+    indicator.setAttribute('style', 'font-size:0.65em;vertical-align:middle;opacity:0.6;user-select:none;pointer-events:none;')
+    heading.appendChild(indicator)
 
-    // Build the reveal button.
-    const btn = doc.createElement('button')
-    btn.id = btnId
-    btn.textContent = rule.buttonText
-    btn.setAttribute(
-      'onclick',
-      `document.getElementById("${wrapperId}").style.display="";` +
-      `this.style.display="none"`
+    // Make heading a toggle.
+    heading.setAttribute('style',
+      (heading.getAttribute('style') || '') +
+      ';cursor:pointer;user-select:none;'
     )
-    btn.setAttribute('style', REVEAL_BTN_STYLE)
+    heading.setAttribute(
+      'onclick',
+      `(function(h){` +
+      `var w=document.getElementById("${wrapperId}");` +
+      `var ind=h.querySelector("[data-gb-collapse-indicator]");` +
+      `if(w.style.display==="none"){` +
+      `  w.style.display="";` +
+      `  if(ind)ind.textContent=" \u25BC";` +
+      `}else{` +
+      `  w.style.display="none";` +
+      `  if(ind)ind.textContent=" \u25B6";` +
+      `}` +
+      `})(this)`
+    )
 
-    body.insertBefore(btn, wrapper)
     count++
   })
 
@@ -434,11 +426,11 @@ function injectHighlightInteraction(doc) {
 
 /**
  * Main entry point called by reader.js before serialising the chapter to a
- * Blob URL. Runs SRS injection first, then hidden-section wrapping.
+ * Blob URL. Runs SRS injection first, then collapsible section wrapping.
  */
 export function enhanceChapter(doc, reviewStates = new Map(), highlights = []) {
   injectSrsButtons(doc, reviewStates)
-  injectHiddenSections(doc)
+  injectCollapsibleSections(doc)
   injectHighlights(doc, highlights)
   injectHighlightInteraction(doc)
 }
