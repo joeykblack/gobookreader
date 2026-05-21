@@ -956,84 +956,87 @@ async function handleSrsMessage(event) {
   const { sectionName, rating } = event.data
   if (!sectionName || !rating) return
 
-  const location = reader.getCurrentLocation()
-  if (!location) {
-    setStatus('No chapter open for SRS action.', 'warn')
-    return
-  }
-
-  const itemId = makeItemId(location.bookId, location.chapterFile, sectionName)
-  let review = await getReview(itemId)
-
-  if (!review) {
-    review = createReviewItem({
-      itemId,
-      bookId: location.bookId,
-      chapterFile: location.chapterFile,
-      sectionName,
-      positionOffset: 0
-    })
-  }
-
-  review = {
-    ...review,
-    scheduler: 'fsrs'
-  }
-
-  const before = cloneReviewState(review)
-
-  if (rating === 'Mark') {
-    const updated = {
-      ...review,
-      lastRating: 'Mark'
+  try {
+    const location = reader.getCurrentLocation()
+    if (!location) {
+      setStatus('No chapter open for SRS action.', 'warn')
+      return
     }
-    await upsertReview(updated)
-    await logReviewEvent({
-      itemId,
-      bookId: location.bookId,
-      chapterFile: location.chapterFile,
-      sectionName,
-      rating,
-      reviewedAt: new Date(),
-      before,
-      after: updated
-    })
-    setStatus(`Marked "${sectionName}" for review. Due ${review.dueDate}.`, 'ok')
-  } else {
-    const now = new Date()
-    const updated = {
-      ...(await applyFsrsRating(review, rating, now, srsSettings.fsrs)),
+
+    const itemId = makeItemId(location.bookId, location.chapterFile, sectionName)
+    let review = await getReview(itemId)
+
+    if (!review) {
+      review = createReviewItem({
+        itemId,
+        bookId: location.bookId,
+        chapterFile: location.chapterFile,
+        sectionName,
+        positionOffset: 0
+      })
+    }
+
+    review = {
+      ...review,
       scheduler: 'fsrs'
     }
-    await upsertReview(updated)
-    await logReviewEvent({
-      itemId,
-      bookId: location.bookId,
-      chapterFile: location.chapterFile,
-      sectionName,
-      rating,
-      reviewedAt: now,
-      before,
-      after: updated
-    })
-    setStatus(
-      `FSRS ${rating}: "${sectionName}" — due ${updated.dueDate} | ${updated.intervalDays}d`,
-      'ok'
-    )
-  }
 
-  // Refresh whichever view is active
-  if (currentReviewItem && currentReviewItem.itemId === itemId) {
+    const before = cloneReviewState(review)
+
+    if (rating === 'Mark') {
+      const updated = {
+        ...review,
+        lastRating: 'Mark'
+      }
+      await upsertReview(updated)
+      await logReviewEvent({
+        itemId,
+        bookId: location.bookId,
+        chapterFile: location.chapterFile,
+        sectionName,
+        rating,
+        reviewedAt: new Date(),
+        before,
+        after: updated
+      })
+      setStatus(`Marked "${sectionName}" for review. Due ${review.dueDate}.`, 'ok')
+    } else {
+      const now = new Date()
+      const updated = {
+        ...(await applyFsrsRating(review, rating, now, srsSettings.fsrs)),
+        scheduler: 'fsrs'
+      }
+      await upsertReview(updated)
+      await logReviewEvent({
+        itemId,
+        bookId: location.bookId,
+        chapterFile: location.chapterFile,
+        sectionName,
+        rating,
+        reviewedAt: now,
+        before,
+        after: updated
+      })
+      setStatus(
+        `FSRS ${rating}: "${sectionName}" — due ${updated.dueDate} | ${updated.intervalDays}d`,
+        'ok'
+      )
+    }
+
+    // Always refresh the active review-facing views so queue/count cannot get stale.
     if (activeView === 'queue') await renderReviewQueue()
     if (activeView === 'info') await renderReviewInfo()
     if (activeView === 'stats') await renderStatsView()
-  }
 
-  if (activeView === 'read' || activeView === 'queue') {
-    await updateTopHeader()
-  }
+    if (activeView === 'read' || activeView === 'queue') {
+      await updateTopHeader()
+    }
 
-  scheduleBackgroundSync()
+    scheduleBackgroundSync()
+  } catch (err) {
+    console.warn('[handleSrsMessage] failed:', err)
+    setStatus(`SRS action failed: ${err?.message || err}`, 'warn')
+  }
 }
 
 async function handleHighlightMessage(event) {
