@@ -1023,10 +1023,15 @@ async function handleSrsMessage(event) {
       )
     }
 
-    // Always refresh the active review-facing views so queue/count cannot get stale.
-    if (activeView === 'queue') await renderReviewQueue()
-    if (activeView === 'info') await renderReviewInfo()
-    if (activeView === 'stats') await renderStatsView()
+    // In the queue view always advance to the next item — even if the just-rated
+    // item is still due today (e.g. Again/Mark), so the reader never stays frozen
+    // on the same page with stale highlighted buttons.
+    if (activeView === 'queue') {
+      await goToNextReview()
+    } else {
+      if (activeView === 'info') await renderReviewInfo()
+      if (activeView === 'stats') await renderStatsView()
+    }
 
     if (activeView === 'read' || activeView === 'queue') {
       await updateTopHeader()
@@ -1219,7 +1224,7 @@ async function openReviewItem(review, targetView = 'read') {
   reader.setPdfZoom(isPdfBook(book) ? getBookPdfZoom(book.id) : 1, { rerender: false })
   await reader.openBook(book, chapterIndex)
   if (!isPdfBook(book)) {
-    scrollIframeToSection(review.sectionName)
+    await scrollIframeToSection(review.sectionName)
   }
   setStatus(`Reviewing: "${review.sectionName}" from ${book.title}`, 'ok')
 }
@@ -1286,6 +1291,9 @@ async function renderReviewQueue() {
     reader.setViewVisible(true)
     if (!currentReviewItem || currentReviewItem.itemId !== activeItem.itemId) {
       await openReviewItem(activeItem, 'queue')
+    } else if (!isPdfBook(books.find(b => b.id === activeItem.bookId))) {
+      // Same item already loaded — iframe may already be ready, just re-scroll.
+      await scrollIframeToSection(activeItem.sectionName)
     }
   }
 
@@ -1730,22 +1738,59 @@ async function openCurrentBookForRead() {
  * Waits briefly for iframe content to load.
  */
 async function scrollIframeToSection(sectionName) {
-  // Wait a tick for iframe to load
-  await new Promise(resolve => setTimeout(resolve, 100))
+  if (!sectionName) return
 
-  try {
-    const iframeDoc = readerFrameEl.contentDocument || readerFrameEl.contentWindow?.document
-    if (!iframeDoc) return
+  function doScroll() {
+    try {
+      const iframeDoc = readerFrameEl.contentDocument || readerFrameEl.contentWindow?.document
+      if (!iframeDoc || !iframeDoc.body) return false
 
-    // Find all heading levels.
-    const headings = Array.from(iframeDoc.querySelectorAll('h1, h2, h3, h4, h5, h6'))
-    const targetHeading = headings.find(h => h.textContent.trim() === sectionName.trim())
+      const headings = Array.from(iframeDoc.querySelectorAll('h1, h2, h3, h4, h5, h6'))
+      // Exact match first, then prefix match for numbered headers like "001 Answer …"
+      const target =
+        headings.find(h => h.textContent.trim() === sectionName.trim()) ||
+        headings.find(h => h.textContent.trim().startsWith(sectionName.trim())) ||
+        headings.find(h => sectionName.trim().startsWith(h.textContent.trim()))
 
-    if (targetHeading) {
-      targetHeading.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      if (target) {
+        target.scrollIntoView({ behavior: 'auto', block: 'start' })
+        return true
+      }
+    } catch {
+      // Cross-origin or iframe access issue — silently ignore
     }
-  } catch (err) {
-    // Cross-origin or other iframe access issues; silently fail
+    return false
+  }
+
+  // Hide the iframe content so the user never sees the wrong scroll position.
+  readerFrameEl.style.visibility = 'hidden'
+  try {
+    const doc = readerFrameEl.contentDocument
+
+    // If already loaded and has body content, scroll immediately.
+    if (doc && doc.readyState === 'complete' && doc.body && doc.body.children.length > 0) {
+      // Double-RAF: the browser may reset the iframe's scroll position to 0 when
+      // a display:none ancestor becomes visible. We must wait for that reset to
+      // complete before scrolling, otherwise our scroll races against it and loses.
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+      doScroll()
+      return
+    }
+
+    // Otherwise wait for the load event (with a safety timeout of 8 seconds).
+    await new Promise(resolve => {
+      const onLoad = () => {
+        // Small delay to let enhanced content (injected scripts) settle
+        setTimeout(() => { doScroll(); resolve() }, 80)
+      }
+      readerFrameEl.addEventListener('load', onLoad, { once: true })
+      setTimeout(() => { doScroll(); resolve() }, 8000)
+    })
+  } catch {
+    // Ignore
+  } finally {
+    // Always restore visibility — user must see the content.
+    readerFrameEl.style.visibility = ''
   }
 }
 
