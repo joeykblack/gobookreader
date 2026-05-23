@@ -1222,9 +1222,14 @@ async function openReviewItem(review, targetView = 'read') {
     switchView(targetView)
   }
   reader.setPdfZoom(isPdfBook(book) ? getBookPdfZoom(book.id) : 1, { rerender: false })
-  await reader.openBook(book, chapterIndex)
-  if (!isPdfBook(book)) {
-    await scrollIframeToSection(review.sectionName)
+  if (!isPdfBook(book)) readerFrameEl.style.visibility = 'hidden'
+  try {
+    await reader.openBook(book, chapterIndex)
+    if (!isPdfBook(book)) {
+      await scrollIframeToSection(review.sectionName)
+    }
+  } finally {
+    readerFrameEl.style.visibility = ''
   }
   setStatus(`Reviewing: "${review.sectionName}" from ${book.title}`, 'ok')
 }
@@ -1249,7 +1254,7 @@ async function goToNextReview() {
 
   const nextItem = dueItems[(currentIdx + 1 + dueItems.length) % dueItems.length]
   await openReviewItem(nextItem, 'queue')
-  await renderReviewQueue()
+  await renderReviewQueue({ skipScroll: true })
 }
 
 function updateNextReviewButton(dueItems = null) {
@@ -1264,7 +1269,7 @@ function updateNextReviewButton(dueItems = null) {
 /**
  * Render the review queue: all reviews with dueDate <= today (local date).
  */
-async function renderReviewQueue() {
+async function renderReviewQueue({ skipScroll = false } = {}) {
   const dueItems = await getDueReviews()
 
   if (!dueItems.length) {
@@ -1291,7 +1296,7 @@ async function renderReviewQueue() {
     reader.setViewVisible(true)
     if (!currentReviewItem || currentReviewItem.itemId !== activeItem.itemId) {
       await openReviewItem(activeItem, 'queue')
-    } else if (!isPdfBook(books.find(b => b.id === activeItem.bookId))) {
+    } else if (!skipScroll && !isPdfBook(books.find(b => b.id === activeItem.bookId))) {
       // Same item already loaded — iframe may already be ready, just re-scroll.
       await scrollIframeToSection(activeItem.sectionName)
     }
@@ -1762,8 +1767,9 @@ async function scrollIframeToSection(sectionName) {
     return false
   }
 
-  // Hide the iframe content so the user never sees the wrong scroll position.
-  readerFrameEl.style.visibility = 'hidden'
+  // Caller may have already hidden the iframe; we hide it here for standalone calls.
+  const wasHidden = readerFrameEl.style.visibility === 'hidden'
+  if (!wasHidden) readerFrameEl.style.visibility = 'hidden'
   try {
     const doc = readerFrameEl.contentDocument
 
@@ -1789,8 +1795,8 @@ async function scrollIframeToSection(sectionName) {
   } catch {
     // Ignore
   } finally {
-    // Always restore visibility — user must see the content.
-    readerFrameEl.style.visibility = ''
+    // Restore visibility only if we were the one who set it.
+    if (!wasHidden) readerFrameEl.style.visibility = ''
   }
 }
 
