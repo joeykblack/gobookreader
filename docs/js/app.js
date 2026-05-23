@@ -49,6 +49,7 @@ const readerNextButtonEl = document.getElementById('reader-next')
 const readerContentsButtonEl = document.getElementById('reader-contents')
 const readerNextReviewButtonEl = document.getElementById('reader-next-review')
 const readerFrameEl = document.getElementById('reader-frame')
+const readerLoadingOverlayEl = document.getElementById('reader-loading-overlay')
 const appHeaderEl = document.getElementById('app-header')
 const appFooterEl = document.getElementById('app-footer')
 const menuToggleEl = document.getElementById('menu-toggle')
@@ -1222,14 +1223,12 @@ async function openReviewItem(review, targetView = 'read') {
     switchView(targetView)
   }
   reader.setPdfZoom(isPdfBook(book) ? getBookPdfZoom(book.id) : 1, { rerender: false })
-  if (!isPdfBook(book)) readerFrameEl.style.visibility = 'hidden'
-  try {
-    await reader.openBook(book, chapterIndex)
-    if (!isPdfBook(book)) {
-      await scrollIframeToSection(review.sectionName)
-    }
-  } finally {
-    readerFrameEl.style.visibility = ''
+  if (!isPdfBook(book)) reader.setSectionScroll(review.sectionName)
+  await reader.openBook(book, chapterIndex)
+  if (!isPdfBook(book)) {
+    // Fallback: ensure we land on the exact review section even if pre-paint
+    // injected scroll did not run or matched late.
+    await scrollIframeToSection(review.sectionName)
   }
   setStatus(`Reviewing: "${review.sectionName}" from ${book.title}`, 'ok')
 }
@@ -1740,7 +1739,8 @@ async function openCurrentBookForRead() {
 
 /**
  * Scroll the chapter iframe to the first heading matching the section name.
- * Waits briefly for iframe content to load.
+ * Used only for the "same chapter already loaded, navigate back" case.
+ * New-chapter loads use setSectionScroll() to inject scroll before first paint.
  */
 async function scrollIframeToSection(sectionName) {
   if (!sectionName) return
@@ -1758,7 +1758,7 @@ async function scrollIframeToSection(sectionName) {
         headings.find(h => sectionName.trim().startsWith(h.textContent.trim()))
 
       if (target) {
-        target.scrollIntoView({ behavior: 'auto', block: 'start' })
+        target.scrollIntoView({ behavior: 'instant', block: 'start' })
         return true
       }
     } catch {
@@ -1767,37 +1767,38 @@ async function scrollIframeToSection(sectionName) {
     return false
   }
 
-  // Caller may have already hidden the iframe; we hide it here for standalone calls.
-  const wasHidden = readerFrameEl.style.visibility === 'hidden'
-  if (!wasHidden) readerFrameEl.style.visibility = 'hidden'
-  try {
+  const isReady = () => {
     const doc = readerFrameEl.contentDocument
+    return !!(doc && doc.readyState === 'complete' && doc.body && doc.body.children.length > 0)
+  }
 
-    // If already loaded and has body content, scroll immediately.
-    if (doc && doc.readyState === 'complete' && doc.body && doc.body.children.length > 0) {
-      // Double-RAF: the browser may reset the iframe's scroll position to 0 when
-      // a display:none ancestor becomes visible. We must wait for that reset to
-      // complete before scrolling, otherwise our scroll races against it and loses.
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+  if (isReady()) {
+    // Double-RAF lets the browser finish any scroll-reset from display:none→block.
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    doScroll()
+    return
+  }
+
+  // If the iframe is still loading, wait for load and then scroll.
+  await new Promise(resolve => {
+    const onLoad = async () => {
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
       doScroll()
-      return
+      resolve()
     }
 
-    // Otherwise wait for the load event (with a safety timeout of 8 seconds).
-    await new Promise(resolve => {
-      const onLoad = () => {
-        // Small delay to let enhanced content (injected scripts) settle
-        setTimeout(() => { doScroll(); resolve() }, 80)
+    readerFrameEl.addEventListener('load', onLoad, { once: true })
+
+    // Safety timeout so we do not hang forever if load never fires.
+    setTimeout(async () => {
+      readerFrameEl.removeEventListener('load', onLoad)
+      if (isReady()) {
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+        doScroll()
       }
-      readerFrameEl.addEventListener('load', onLoad, { once: true })
-      setTimeout(() => { doScroll(); resolve() }, 8000)
-    })
-  } catch {
-    // Ignore
-  } finally {
-    // Restore visibility only if we were the one who set it.
-    if (!wasHidden) readerFrameEl.style.visibility = ''
-  }
+      resolve()
+    }, 8000)
+  })
 }
 
 async function importSelectedFile() {

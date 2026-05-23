@@ -98,6 +98,7 @@ export function createReaderController({
   let currentBook = null
   let chapterIndex = 0
   let pendingHash = ''
+  let pendingSectionScroll = ''
   let selectNavEntries = null
   let activeChapterUrl = null
   let viewVisible = true
@@ -578,6 +579,34 @@ export function createReaderController({
     enhanceChapter(doc, reviewStates, highlights)
     injectThemeStyle(doc, currentTheme())
 
+    // If a section scroll is pending, inject a scroll-lock + auto-scroll script so
+    // the browser never paints the wrong position — no external overlay needed.
+    if (pendingSectionScroll) {
+      const sectionName = pendingSectionScroll
+      pendingSectionScroll = ''
+      const lockStyle = doc.createElement('style')
+      lockStyle.id = 'gb-scroll-lock'
+      lockStyle.textContent = 'html,body{overflow:hidden!important}'
+      const scrollScript = doc.createElement('script')
+      scrollScript.textContent = `(function(){
+  function gb_scroll(){
+    var name=${JSON.stringify(sectionName)};
+    var hs=document.querySelectorAll('h1,h2,h3,h4,h5,h6');
+    var t=null;
+    for(var i=0;i<hs.length;i++){if(hs[i].textContent.trim()===name){t=hs[i];break;}}
+    if(!t){for(var i=0;i<hs.length;i++){if(hs[i].textContent.trim().startsWith(name)){t=hs[i];break;}}}
+    if(!t){for(var i=0;i<hs.length;i++){if(name.startsWith(hs[i].textContent.trim())){t=hs[i];break;}}}
+    if(t){t.scrollIntoView({behavior:'instant',block:'start'});}
+    var s=document.getElementById('gb-scroll-lock');
+    if(s)s.remove();
+  }
+  if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',gb_scroll);}else{gb_scroll();}
+})();`
+      const body = doc.body || doc.documentElement
+      body.insertBefore(scrollScript, body.firstChild)
+      body.insertBefore(lockStyle, body.firstChild)
+    }
+
     if (isXhtml) {
       return new XMLSerializer().serializeToString(doc)
     }
@@ -780,6 +809,7 @@ export function createReaderController({
     openBook,
     closeReader,
     setViewVisible,
+    setSectionScroll(name) { pendingSectionScroll = name || '' },
     getCurrentLocation() {
       if (!currentBook) return null
       const chapter = currentBook.chapters[chapterIndex]
