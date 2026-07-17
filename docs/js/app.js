@@ -102,7 +102,7 @@ const PDF_ZOOM_STEP = 0.05
 
 function normalizeReaderTheme(value) {
   const theme = String(value || '').trim().toLowerCase()
-  if (theme === 'sepia' || theme === 'dim-sepia') return theme
+  if (theme === 'light' || theme === 'sepia' || theme === 'dim-sepia') return theme
   return 'sepia'
 }
 
