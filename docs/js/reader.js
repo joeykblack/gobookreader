@@ -160,6 +160,10 @@ export function createReaderController({
       hr, table, td, th, pre, code, blockquote {
         border-color: ${p.border} !important;
       }
+      /* Prevent text color from bleeding into SVG elements */
+      svg, svg text, svg tspan {
+        color: auto !important;
+      }
     `
 
     const head = doc.querySelector('head')

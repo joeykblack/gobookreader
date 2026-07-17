@@ -264,7 +264,7 @@ function loadReaderState() {
       books: parsed.books && typeof parsed.books === 'object' ? parsed.books : {}
     }
   } catch {
-    return { selectedBookId: null, lastReadBookId: null, activeView: 'library', readerTheme: 'sepia', books: {} }
+    return { selectedBookId: null, lastReadBookId: null, activeView: 'library', readerTheme: 'light', books: {} }
   }
 }
 
