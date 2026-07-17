@@ -232,7 +232,9 @@ function injectCollapsibleSections(doc) {
     if (!hasMeaningful) return
 
     const headingText = (heading.textContent || '').trim()
-    const startCollapsed = AUTO_COLLAPSE_RULES.some(re => re.test(headingText))
+    // Start collapsed by default, except: "Variation/Variations" that also contain "Problem" stay expanded.
+    const startCollapsed = AUTO_COLLAPSE_RULES.some(re => re.test(headingText)) &&
+      !(/(Variation|Variations)/i.test(headingText) && /Problem/i.test(headingText))
 
     const wrapperId = `gb-section-body-${i}`
 
