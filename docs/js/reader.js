@@ -171,6 +171,26 @@ export function createReaderController({
     else doc.documentElement?.prepend(style)
   }
 
+  function injectResponsiveMediaStyle(doc) {
+    const style = doc.createElement('style')
+    style.setAttribute('data-gorecall-responsive-media', '1')
+    style.textContent = `
+      img, svg, video, canvas {
+        max-width: 100% !important;
+      }
+      img, video, canvas {
+        height: auto !important;
+      }
+      table {
+        max-width: 100% !important;
+      }
+    `
+
+    const head = doc.querySelector('head')
+    if (head) head.append(style)
+    else doc.documentElement?.prepend(style)
+  }
+
   function isPdfBook(book) {
     return String(book?.format || '').toLowerCase() === 'pdf'
   }
@@ -581,6 +601,7 @@ export function createReaderController({
       ? await highlightProvider(book.id, chapterPath)
       : []
     enhanceChapter(doc, reviewStates, highlights)
+    injectResponsiveMediaStyle(doc)
     injectThemeStyle(doc, currentTheme())
 
     // If a section scroll is pending, inject a scroll-lock + auto-scroll script so
