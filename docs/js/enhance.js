@@ -21,6 +21,11 @@ const AUTO_COLLAPSE_RULES = [
   /\bHints?\b/i,
   /\bSolutions?\b/i,
   /\bVariations?\b/i,
+  /\bSubvariations?\b/i,
+  /\bFailures?\b/i,
+  /\bShape\s+Analysis\b/i,
+  /\bMisguidance\b/i,
+  /\bFairy\s+Dust\b/i,
   /\bLessons?\s+learned\b/i
 ]
 const HEADING_SELECTOR = 'h1, h2, h3, h4, h5, h6'
@@ -232,9 +237,10 @@ function injectCollapsibleSections(doc) {
     if (!hasMeaningful) return
 
     const headingText = (heading.textContent || '').trim()
-    // Start collapsed by default, except: "Variation/Variations" that also contain "Problem" stay expanded.
+    // Start collapsed by default, except: Variation/Subvariation/Failure headings
+    // that also contain "Problem" stay expanded.
     const startCollapsed = AUTO_COLLAPSE_RULES.some(re => re.test(headingText)) &&
-      !(/(Variation|Variations)/i.test(headingText) && /Problem/i.test(headingText))
+      !(/(Variation|Variations|Subvariation|Subvariations|Failure|Failures)/i.test(headingText) && /Problem/i.test(headingText))
 
     const wrapperId = `gb-section-body-${i}`
 
